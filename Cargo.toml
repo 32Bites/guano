@@ -1,0 +1,28 @@
+[package]
+name = "guano"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = ["crates/*"]
+
+[features]
+lexer = ["dep:guano-lexer"]
+ast = ["lexer", "dep:guano-ast"]
+bytecode = ["dep:guano-bytecode"]
+runtime = ["bytecode", "dep:guano-runtime"]
+llvm = ["dep:guano-llvm"]
+jit = ["llvm", "dep:guano-jit"]
+default = ["ast", "runtime"]
+all = ["default", "jit"]
+
+
+[dependencies]
+guano-lexer = { path = "./crates/guano-lexer", optional = true }
+guano-ast = { path = "./crates/guano-ast", optional = true }
+guano-bytecode = { path = "./crates/guano-bytecode", optional = true }
+guano-runtime = { path = "./crates/guano-runtime", optional = true }
+guano-llvm = { path = "./crates/guano-llvm", optional = true }
+guano-jit = { path = "./crates/guano-jit", optional = true }

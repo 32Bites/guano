@@ -1,0 +1,16 @@
+[package]
+name = "guano-lexer"
+version = "0.1.0"
+edition = "2021"
+authors = ["Noah Shanaberger <noah@thenoah.party>"]
+readme = "README.md"
+homepage = "https://github.com/32Bites/guano/crates/guano-lexer"
+repository = "https://github.com/32Bites/crates/guano-lexer"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# My library for reading characters from a stream.
+parsley-rs = "0.1.0"
+regex = "1"

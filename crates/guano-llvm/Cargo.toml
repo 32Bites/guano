@@ -1,0 +1,14 @@
+[package]
+name = "guano-llvm"
+version = "0.1.0"
+edition = "2021"
+authors = ["Noah Shanaberger <noah@thenoah.party>"]
+readme = "README.md"
+homepage = "https://github.com/32Bites/guano/crates/guano-llvm"
+repository = "https://github.com/32Bites/crates/guano-llvm"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm14-0"] }
