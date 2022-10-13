@@ -5,6 +5,7 @@ mod spanned_lexer;
 
 pub use token::*;
 pub use spanned_lexer::*;
+pub use logos;
 
 #[cfg(test)]
 mod tests {

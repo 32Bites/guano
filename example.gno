@@ -8,11 +8,11 @@ $#
 
 let global_name = "This Global Variable Was Created By Noah";
 
-// Entrypoint
-fun main: uint @ args: []string {
+## Entrypoint
+fun main @ args: []string {
     let name: string = "Noah";
     let first: float = 11.0;
-    let second: uint = 6;
+    let second: usize = 6;
     let age: float = add @ first, second;
     let new_age: float = add @ first, (add @ second, second);
 
@@ -21,12 +21,12 @@ fun main: uint @ args: []string {
     ret 0;
 }
 
-// Prints a person's age and name.
+## Prints a person's age and name.
 fun personPrint @ age: float, name: string {
     print @ "{}'s age: {}" : (name, age);
 }
 
-// Add two values
-fun add: float @ first: float, second: uint {
+## Add two values
+fun add: f32 @ first: float, second: uint {
     ret first + second as float;
 }

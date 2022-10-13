@@ -20,6 +20,8 @@ all = ["default", "jit"]
 
 
 [dependencies]
+clap = { version = "4.0.10", features = ["derive"] }
+glob = "0.3.0"
 guano-lexer = { path = "./crates/guano-lexer", optional = true }
 guano-ast = { path = "./crates/guano-ast", optional = true }
 guano-bytecode = { path = "./crates/guano-bytecode", optional = true }

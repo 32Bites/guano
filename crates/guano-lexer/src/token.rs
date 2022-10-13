@@ -17,6 +17,10 @@ pub enum Token {
     #[token("var")]
     KeyVar,
 
+    /// Nil value
+    #[token("nil")]
+    KeyNil,
+
     /// Return keyword
     #[token("ret")]
     KeyRet,
@@ -35,16 +39,26 @@ pub enum Token {
     PrimChar,
 
     /// Unsigned integer type
-    #[regex(r"u(\d+|size)", bitsize)]
-    PrimUnsignedInteger(BitSize),
+    /*     #[regex(r"u(\d+|size)", bitsize)]
+    PrimUnsignedInteger(BitSize), */
+    #[token("uint")]
+    PrimUnsignedInteger,
 
     /// Signed integer type
-    #[regex(r"i(\d+|size)", bitsize)]
-    PrimInteger(BitSize),
+    /*     #[regex(r"i(\d+|size)", bitsize)]
+    PrimInteger(BitSize), */
+    #[token("int")]
+    PrimInteger,
 
     /// Floating point type
-    #[regex(r"f(\d+|size)", bitsize)]
-    PrimFloat(BitSize),
+    /*     #[regex(r"f(\d+|size)", bitsize)]
+    PrimFloat(BitSize), */
+    #[token("float")]
+    PrimFloat,
+
+    /// Boolean type
+    #[token("boolean")]
+    PrimBool,
 
     // Literals
     // The in-memory value of these literals will not
@@ -75,6 +89,10 @@ pub enum Token {
     /// What exact type is infered by the parser.
     #[regex(r"0[bB][01][_01]*", remove_first_two)]
     LitBin(String),
+
+    /// Boolean Literal
+    #[regex(r"false|true", |lex| if lex.slice() == "true" {true} else {false})]
+    LitBool(bool),
 
     // General
     /// Whitespace
@@ -200,6 +218,83 @@ pub enum Token {
     Error,
 }
 
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Token::KeyFun => "Function Keyword",
+            Token::KeyLet => "Let Keyword",
+            Token::KeyVar => "Var Keyword",
+            Token::KeyRet => "Return Keyword",
+            Token::KeyAs => "Type Cast Keyword",
+            Token::KeyNil => "Nil Keyword",
+            Token::PrimStr => "String Type",
+            Token::PrimChar => "Char Type",
+            Token::PrimBool => "Bool Type",
+            /*             Token::PrimUnsignedInteger(b) => todo!(),
+            Token::PrimInteger(_) => todo!(),
+            Token::PrimFloat(_) => todo!(), */
+            Token::PrimUnsignedInteger => "Unsigned Integer Type",
+            Token::PrimInteger => "Signed Integer Type",
+            Token::PrimFloat => "Floating Point Type",
+            Token::LitInteger(_) => "Integer Literal",
+            Token::LitFloat(_) => "Floating Point Literal",
+            Token::LitString(_) => "String Literal",
+            Token::LitChar(_) => "Character Literal",
+            Token::LitHex(_) => "Hexadecimal Literal",
+            Token::LitBin(_) => "Binary Literal",
+            Token::LitBool(_) => "Boolean Literal",
+            Token::Whitespace => "Whitespace",
+            Token::Identifier(_) => "Identifier",
+            Token::CommSingle(_) => "Monoline Comment",
+            Token::CommMulti(_) => "Multiline Comment",
+            Token::OpenBrace => "Opening Brace",
+            Token::Newline => "Newline",
+            Token::CloseBrace => "Closing Brace",
+            Token::OpenBracket => "Opening Bracket",
+            Token::CloseBracket => "Closing Bracket",
+            Token::OpenParen => "Opening Parenthesis",
+            Token::CloseParen => "Closing Parenthesis",
+            Token::Equals => "Equals",
+            Token::Ampersand => "Ampersand",
+            Token::Asperand => "Asperand",
+            Token::Comma => "Comma",
+            Token::Colon => "Colon",
+            Token::Semicolon => "Semicolon",
+            Token::Percent => "Percent",
+            Token::Caret => "Caret",
+            Token::Exclamation => "Exclamation",
+            Token::Pipe => "Pipe",
+            Token::Tilda => "Tilda",
+            Token::Plus => "Plus",
+            Token::Minus => "Minus",
+            Token::Slash => "Slash",
+            Token::Asterisk => "Asterisk",
+            Token::LessThan => "Less Than",
+            Token::GreaterThan => "Greater Than",
+            Token::Period => "Period",
+            Token::Error => "Error",
+        })
+    }
+}
+
+impl Token {
+    pub fn value(&self) -> Option<&str> {
+        match self {
+            Token::LitInteger(s)
+            | Token::LitFloat(s)
+            | Token::LitString(s)
+            | Token::LitChar(s)
+            | Token::LitHex(s)
+            | Token::LitBin(s)
+            | Token::Identifier(s)
+            | Token::CommSingle(s)
+            | Token::CommMulti((s, _)) => Some(s),
+            Token::LitBool(b) => Some(if *b { "true" } else { "false" }),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BitSize {
     SystemSize,
@@ -209,8 +304,8 @@ pub enum BitSize {
 impl std::fmt::Display for BitSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SystemSize => f.write_str("size"),
-            Self::Specific(bit_size) => write!(f, "{}", bit_size),
+            Self::SystemSize => f.write_str("Pointer-sized"),
+            Self::Specific(bit_size) => write!(f, "{}-bit", bit_size),
         }
     }
 }
@@ -347,7 +442,6 @@ mod tests {
                 _ => (),
             }
         }
-        
 
         println!("{:#?}", multi_lexer.lines());
     }
