@@ -1,7 +1,5 @@
 use logos::{Lexer, Logos, Source};
 
-use crate::PushNewlines;
-
 fn char_parse(lex: &mut Lexer<Token>) -> Option<char> {
     lex.slice().chars().next()
 }

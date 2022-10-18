@@ -295,32 +295,6 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum BitSize {
-    SystemSize,
-    Specific(u8), // 8, 16, 32, and 64 are the exclusive valid options.
-}
-
-impl std::fmt::Display for BitSize {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::SystemSize => f.write_str("Pointer-sized"),
-            Self::Specific(bit_size) => write!(f, "{}-bit", bit_size),
-        }
-    }
-}
-
-fn bitsize(lex: &mut Lexer<Token>) -> Option<BitSize> {
-    Some(match &lex.slice()[1..] {
-        "size" => BitSize::SystemSize,
-        "8" => BitSize::Specific(8),
-        "16" => BitSize::Specific(16),
-        "32" => BitSize::Specific(32),
-        "64" => BitSize::Specific(64),
-        _ => return None,
-    })
-}
-
 fn store_string(lex: &mut Lexer<Token>) -> String {
     lex.slice().to_owned()
 }
