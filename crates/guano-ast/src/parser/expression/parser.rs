@@ -95,32 +95,19 @@ impl Expression {
     ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::comparison(parser)?;
         loop {
-            let operator = if let Some((Token::Equals | Token::Exclamation, _)) =
-                parser.lexer.peek()
-            {
-                let equals = matches!(parser.lexer.next().convert_result()?, (Token::Equals, _));
-                if let (Token::Equals, _) = parser.lexer.next().convert_result()? {
-                    if equals {
-                        EqualityOperator::Equals
-                    } else {
-                        EqualityOperator::NotEquals
-                    }
-                } else {
-                    return Err(None);
+            if let Ok(operator) = EqualityOperator::parse(parser) {
+                let right = Box::new(Expression::comparison(parser)?);
+
+                left = Expression::Equality {
+                    operator,
+                    left: Box::new(left),
+                    right,
                 }
+                .simplify_equality();
             } else {
-                parser.lexer.reset_peek();
+                parser.reset_peek();
                 break;
-            };
-
-            let right = Expression::comparison(parser)?;
-
-            left = Expression::Equality {
-                operator,
-                left: Box::new(left),
-                right: Box::new(right),
             }
-            .simplify_equality();
         }
 
         Ok(left)
@@ -130,43 +117,21 @@ impl Expression {
         parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
     ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::cast(parser)?;
+
         loop {
-            let operator =
-                if let Some((Token::GreaterThan | Token::LessThan, _)) = parser.lexer.peek() {
-                    let (token, _) = parser.lexer.next().convert_result()?;
-                    let equality = parser
-                        .lexer
-                        .peek()
-                        .map_or(false, |(t, _)| matches!(t, Token::Equals));
+            if let Ok(operator) = ComparisonOperator::parse(parser) {
+                let right = Box::new(Expression::cast(parser)?);
 
-                    if equality {
-                        parser.lexer.next();
-                        match token {
-                            Token::GreaterThan => ComparisonOperator::GreaterThanEquals,
-                            Token::LessThan => ComparisonOperator::LessThanEquals,
-                            _ => unreachable!(),
-                        }
-                    } else {
-                        parser.lexer.reset_peek();
-                        match token {
-                            Token::GreaterThan => ComparisonOperator::GreaterThan,
-                            Token::LessThan => ComparisonOperator::LessThan,
-                            _ => unreachable!(),
-                        }
-                    }
-                } else {
-                    parser.lexer.reset_peek();
-                    break;
-                };
-
-            let right = Expression::cast(parser)?;
-
-            left = Expression::Comparison {
-                operator,
-                left: Box::new(left),
-                right: Box::new(right),
+                left = Expression::Comparison {
+                    operator,
+                    left: Box::new(left),
+                    right,
+                }
+                .simplify_comparison();
+            } else {
+                parser.reset_peek();
+                break;
             }
-            .simplify_comparison();
         }
 
         Ok(left)
@@ -201,25 +166,17 @@ impl Expression {
     ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::factor(parser)?;
         loop {
-            if let Some((token @ (Token::Plus | Token::Minus), _)) = parser.lexer.peek() {
-                let operator = match token {
-                    Token::Plus => TermOperator::Add,
-                    Token::Minus => TermOperator::Subtract,
-                    _ => unreachable!(),
-                };
-
-                parser.lexer.next();
-
-                let right = Expression::factor(parser)?;
+            if let Ok(operator) = TermOperator::parse(parser) {
+                let right = Box::new(Expression::factor(parser)?);
 
                 left = Expression::Term {
                     operator,
                     left: Box::new(left),
-                    right: Box::new(right),
+                    right,
                 }
-                .simplify_term();
+                .simplify_term()
             } else {
-                parser.lexer.reset_peek();
+                parser.reset_peek();
                 break;
             }
         }
@@ -233,25 +190,17 @@ impl Expression {
         let mut left = Expression::unary(parser)?;
 
         loop {
-            if let Some((token @ (Token::Slash | Token::Asterisk), _)) = parser.lexer.peek() {
-                let operator = match token {
-                    Token::Slash => FactorOperator::Divide,
-                    Token::Asterisk => FactorOperator::Multiply,
-                    _ => unreachable!(),
-                };
-
-                parser.lexer.next();
-
-                let right = Expression::unary(parser)?;
+            if let Ok(operator) = FactorOperator::parse(parser) {
+                let right = Box::new(Expression::unary(parser)?);
 
                 left = Expression::Factor {
                     operator,
                     left: Box::new(left),
-                    right: Box::new(right),
+                    right,
                 }
                 .simplify_factor();
             } else {
-                parser.lexer.reset_peek();
+                parser.reset_peek();
                 break;
             }
         }
@@ -340,7 +289,7 @@ mod tests {
 
     #[test]
     fn test() {
-        let test = "(((5 + 6)))";
+        let test = "(((5 <= 6)))";
 
         let mut parser = <Parser>::from_source(test); // dafaq
 
