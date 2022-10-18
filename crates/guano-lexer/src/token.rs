@@ -31,7 +31,7 @@ pub enum Token {
 
     // Primitive Types
     /// String type
-    #[token("str")]
+    #[token("string")]
     PrimStr,
 
     /// Char type

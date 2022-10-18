@@ -17,8 +17,6 @@ fun main @ args: []string {
     let new_age: float = add @ first, (add @ second, second);
 
     personPrint @ age, name;
-
-    ret 0;
 }
 
 ## Prints a person's age and name.

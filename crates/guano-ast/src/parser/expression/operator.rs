@@ -1,4 +1,106 @@
-use std::cmp::Ordering;
+use guano_lexer::{Span, Token};
+
+use crate::parser::{Parse, Parser, ConvertResult};
+
+use super::parser::ExpressionError;
+
+#[derive(Debug, Clone)]
+pub enum LogicalOperator {
+    And,
+    Or,
+}
+
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for LogicalOperator {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<OperatorError>> {
+        let operator = match parser.peek_token::<2>() {
+            [Some(Token::Pipe), Some(Token::Pipe)] => LogicalOperator::Or,
+            [Some(Token::Ampersand), Some(Token::Ampersand)] => LogicalOperator::And,
+            _ => {
+                parser.reset_peek();
+                return Err(None)
+            }
+        };
+
+        Ok(operator)
+    }
+}
+
+impl std::fmt::Display for LogicalOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            LogicalOperator::And => "&&",
+            LogicalOperator::Or => "||",
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct BitwiseOperationParser;
+
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError, BitwiseOperator> for BitwiseOperationParser {
+    fn parse(parser: &mut Parser<I>) -> Result<BitwiseOperator, Option<OperatorError>> {
+        let operator = match parser.peek_token::<2>() {
+            [Some(Token::Pipe), o] if !matches!(o, Some(Token::Pipe)) => BitwiseOperator::Or,
+            [Some(Token::Ampersand), o] if !matches!(o, Some(Token::Ampersand)) => BitwiseOperator::And,
+            [Some(Token::Caret), _] => BitwiseOperator::Xor,
+            _ => {
+                parser.reset_peek();
+                return Err(None);
+            }
+        };
+
+        parser.read::<1>();
+
+        Ok(operator)
+    }
+}
+
+#[derive(Debug)]
+pub struct BitShiftParser;
+
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError, BitwiseOperator> for BitShiftParser {
+    fn parse(parser: &mut Parser<I>) -> Result<BitwiseOperator, Option<OperatorError>> {
+        let operator = match parser.peek_token::<2>() {
+            [Some(Token::LessThan), Some(Token::LessThan)] => BitwiseOperator::ShiftLeft,
+            [Some(Token::GreaterThan), Some(Token::GreaterThan)] => BitwiseOperator::ShiftRight,
+            _ => {
+                parser.reset_peek();
+                return Err(None);
+            }
+        };
+
+        parser.read::<2>();
+
+        Ok(operator)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum BitwiseOperator {
+    ShiftLeft,
+    ShiftRight,
+    Or,
+    Xor,
+    And,
+}
+
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for BitwiseOperator {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<OperatorError>> {
+        BitShiftParser::parse(parser).or_else(|_| BitwiseOperationParser::parse(parser))
+    }
+}
+
+impl std::fmt::Display for BitwiseOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            BitwiseOperator::ShiftLeft => "<<",
+            BitwiseOperator::ShiftRight => "<<",
+            BitwiseOperator::Or => "|",
+            BitwiseOperator::Xor => "^",
+            BitwiseOperator::And => "&",
+        })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum UnaryOperator {
@@ -15,63 +117,20 @@ impl std::fmt::Display for UnaryOperator {
     }
 }
 
-impl Operator for UnaryOperator {
-    fn precedence(&self) -> OperatorPrecedence {
-        0.into()
-    }
-}
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for UnaryOperator {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<OperatorError>> {
+        let operator = match parser.peek_token::<1>() {
+            [Some(Token::Minus)] => UnaryOperator::Negate,
+            [Some(Token::Exclamation)] => UnaryOperator::LogicalNegate,
+            _ => {
+                parser.reset_peek();
+                return Err(None);
+            }
+        };
 
-#[derive(Debug, Clone)]
-pub enum BinaryOperator {
-    Comparison(ComparisonOperator),
-    Term(TermOperator),
-    Factor(FactorOperator),
-    Equality(EqualityOperator),
-}
+        parser.read::<1>();
 
-impl std::fmt::Display for BinaryOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BinaryOperator::Comparison(c) => c.fmt(f),
-            BinaryOperator::Term(t) => t.fmt(f),
-            BinaryOperator::Factor(fc) => fc.fmt(f),
-            BinaryOperator::Equality(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<ComparisonOperator> for BinaryOperator {
-    fn from(c: ComparisonOperator) -> Self {
-        Self::Comparison(c)
-    }
-}
-
-impl From<TermOperator> for BinaryOperator {
-    fn from(t: TermOperator) -> Self {
-        Self::Term(t)
-    }
-}
-
-impl From<FactorOperator> for BinaryOperator {
-    fn from(f: FactorOperator) -> Self {
-        Self::Factor(f)
-    }
-}
-
-impl From<EqualityOperator> for BinaryOperator {
-    fn from(e: EqualityOperator) -> Self {
-        Self::Equality(e)
-    }
-}
-
-impl Operator for BinaryOperator {
-    fn precedence(&self) -> OperatorPrecedence {
-        match self {
-            BinaryOperator::Comparison(c) => c.precedence(),
-            BinaryOperator::Term(t) => t.precedence(),
-            BinaryOperator::Factor(f) => f.precedence(),
-            BinaryOperator::Equality(e) => e.precedence(),
-        }
+        Ok(operator)
     }
 }
 
@@ -90,9 +149,20 @@ impl std::fmt::Display for EqualityOperator {
     }
 }
 
-impl Operator for EqualityOperator {
-    fn precedence(&self) -> OperatorPrecedence {
-        4.into()
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for EqualityOperator {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<OperatorError>> {
+        let operator = match parser.peek_token::<2>() {
+            [Some(Token::Equals), Some(Token::Equals)] => EqualityOperator::Equals,
+            [Some(Token::Exclamation), Some(Token::Equals)] => EqualityOperator::NotEquals,
+            _ => {
+                parser.reset_peek();
+                return Err(None)
+            }
+        };
+
+        parser.read_token::<2>();
+
+        Ok(operator)
     }
 }
 
@@ -115,18 +185,33 @@ impl std::fmt::Display for ComparisonOperator {
     }
 }
 
-impl Operator for ComparisonOperator {
-    fn precedence(&self) -> OperatorPrecedence {
-        4.into()
-    }
-}
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for ComparisonOperator {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<OperatorError>> {
+        let operator = match parser.peek_token::<2>() {
+            [Some(t @ (Token::GreaterThan | Token::LessThan)), Some(Token::Equals)] => {
+                let operator = match t {
+                    Token::GreaterThan => ComparisonOperator::GreaterThanEquals,
+                    Token::LessThan => ComparisonOperator::LessThanEquals,
+                    _ => unreachable!()
+                };
+                parser.read_token::<2>();
+                operator
+            }
+            [Some(Token::LessThan), o] if !matches!(o, Some(Token::LessThan)) => {
+                parser.read_token::<1>();
+                ComparisonOperator::LessThan
+            }
+            [Some(Token::GreaterThan), o] if !matches!(o, Some(Token::GreaterThan)) => {
+                parser.read_token::<1>();
+                ComparisonOperator::GreaterThan
+            }
+            _ => {
+                parser.reset_peek();
+                return Err(None);
+            }
+        };
 
-#[derive(Debug, Clone)]
-pub struct CastOperator;
-
-impl Operator for CastOperator {
-    fn precedence(&self) -> OperatorPrecedence {
-        3.into()
+        Ok(operator)
     }
 }
 
@@ -145,9 +230,20 @@ impl std::fmt::Display for TermOperator {
     }
 }
 
-impl Operator for TermOperator {
-    fn precedence(&self) -> OperatorPrecedence {
-        2.into()
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for TermOperator {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<OperatorError>> {
+        let operator = match parser.peek_token::<1>() {
+            [Some(Token::Plus)] => TermOperator::Add,
+            [Some(Token::Minus)] => TermOperator::Subtract,
+            _ => {
+                parser.reset_peek();
+                return Err(None)
+            }
+        };
+
+        parser.read::<1>();
+
+        Ok(operator)
     }
 }
 
@@ -166,31 +262,36 @@ impl std::fmt::Display for FactorOperator {
     }
 }
 
-impl Operator for FactorOperator {
-    fn precedence(&self) -> OperatorPrecedence {
-        1.into()
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for FactorOperator {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<OperatorError>> {
+        let operator = match parser.peek_token::<1>() {
+            [Some(Token::Asterisk)] => FactorOperator::Multiply,
+            [Some(Token::Slash)] => FactorOperator::Divide,
+            _ => {
+                parser.reset_peek();
+                return Err(None);
+            }
+        };
+
+        parser.read::<1>();
+
+        Ok(operator)
     }
 }
 
-pub trait Operator {
-    fn precedence(&self) -> OperatorPrecedence;
-}
+#[derive(Debug)]
+pub struct OperatorError;
 
-#[derive(Debug, PartialEq)]
-pub struct OperatorPrecedence(usize);
-
-impl From<usize> for OperatorPrecedence {
-    fn from(u: usize) -> Self {
-        OperatorPrecedence(u)
+impl std::fmt::Display for OperatorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("operator error, this should be unreachable")
     }
 }
 
-impl PartialOrd for OperatorPrecedence {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0).map(|o| match o {
-            Ordering::Less => Ordering::Greater,
-            Ordering::Equal => Ordering::Equal,
-            Ordering::Greater => Ordering::Less,
-        })
+impl std::error::Error for OperatorError {}
+
+impl<T> ConvertResult<T, ExpressionError> for Result<T, Option<OperatorError>> {
+    fn convert_result(self) -> Result<T, Option<ExpressionError>> {
+        self.map_err(|_| None)
     }
 }

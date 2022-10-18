@@ -26,8 +26,8 @@ impl std::fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.expression {
             Expression::Group(g) => write!(f, "( {} )", self.sub(g))?,
-            Expression::Literal(l) => write!(f, "{}", l)?,
-            Expression::Variable(v) => write!(f, "{}", v)?,
+            Expression::Literal(l) => write!(f, "{l}")?,
+            Expression::Variable(v) => write!(f, "{v}")?,
             Expression::Unary { operator, right } => write!(f, "{operator}{}", self.sub(right))?,
             e => {
                 if self.grouped {
@@ -35,15 +35,10 @@ impl std::fmt::Display for Display<'_> {
                 }
 
                 match e {
-                    Expression::FunctionCall { name, arguments } => todo!(),
                     Expression::Cast { left, cast_to } => {
                         write!(f, "{} as {cast_to}", self.sub(left))
                     }
-                    Expression::Binary {
-                        operator,
-                        left,
-                        right,
-                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+/*                     Expression::FunctionCall { name, arguments } => todo!(),
                     Expression::Format {
                         format_string,
                         arguments,
@@ -51,8 +46,27 @@ impl std::fmt::Display for Display<'_> {
                     Expression::Access {
                         owner,
                         accessed_value,
-                    } => todo!(),
-                    Expression::Index { owner, index } => todo!(),
+                    } => todo!(), */
+                    Expression::Factor {
+                        operator,
+                        left,
+                        right,
+                    } => write!(f, "{left} {operator} {right}"),
+                    Expression::Term {
+                        operator,
+                        left,
+                        right,
+                    } => write!(f, "{left} {operator} {right}"),
+                    Expression::Comparison {
+                        operator,
+                        left,
+                        right,
+                    } => write!(f, "{left} {operator} {right}"),
+                    Expression::Equality {
+                        operator,
+                        left,
+                        right,
+                    } => write!(f, "{left} {operator} {right}"),
                     _ => unreachable!(),
                 }?;
 

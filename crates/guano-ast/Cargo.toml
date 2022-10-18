@@ -14,3 +14,6 @@ license = "MIT"
 guano-lexer = { path = "../guano-lexer" }
 itertools = "0.10.5"
 num = "0.4.0"
+bigdecimal = "0.3.0"
+thiserror = "1.0"
+indexmap = "1.9.1"

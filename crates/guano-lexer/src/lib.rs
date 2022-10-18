@@ -1,11 +1,11 @@
 pub mod escape_char;
 
-mod token;
 mod spanned_lexer;
+mod token;
 
-pub use token::*;
-pub use spanned_lexer::*;
 pub use logos;
+pub use spanned_lexer::*;
+pub use token::*;
 
 #[cfg(test)]
 mod tests {

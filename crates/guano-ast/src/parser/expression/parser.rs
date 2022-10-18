@@ -1,14 +1,18 @@
-use guano_lexer::{escape_char::Token as EscapeToken, logos::Logos, Span, Token};
+use guano_lexer::{Span, Token};
+use thiserror::Error;
 
-use crate::parser::{typing::Type, Parse, Parser};
+use crate::{
+    convert_result_impl,
+    parser::{
+        typing::{Type, TypeError},
+        ConvertResult, Parse, Parser,
+    },
+};
 
 use super::{
     display::Display,
-    literal::Literal,
-    operator::{
-        BinaryOperator, ComparisonOperator, EqualityOperator, FactorOperator, TermOperator,
-        UnaryOperator,
-    },
+    literal::{Literal, LiteralError},
+    operator::{ComparisonOperator, EqualityOperator, FactorOperator, TermOperator, UnaryOperator},
     simplify::Simplify,
 };
 
@@ -17,10 +21,6 @@ pub enum Expression {
     Group(Box<Expression>),
     Literal(Literal),
     Variable(String),
-    FunctionCall {
-        name: String,
-        arguments: Vec<Expression>,
-    },
     Cast {
         left: Box<Expression>,
         cast_to: Type,
@@ -29,13 +29,32 @@ pub enum Expression {
         operator: UnaryOperator,
         right: Box<Expression>,
     },
-    Binary {
-        operator: BinaryOperator,
+    Factor {
+        operator: FactorOperator,
         left: Box<Expression>,
         right: Box<Expression>,
     },
-    Format {
+    Term {
+        operator: TermOperator,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+    Comparison {
+        operator: ComparisonOperator,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+    Equality {
+        operator: EqualityOperator,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+    /*     Format {
         format_string: String,
+        arguments: Vec<Expression>,
+    },
+    FunctionCall {
+        name: String,
         arguments: Vec<Expression>,
     },
     Access {
@@ -45,11 +64,11 @@ pub enum Expression {
     Index {
         owner: Box<Expression>,
         index: Box<Expression>,
-    },
+    }, */
 }
 
-impl Parse for Expression {
-    fn parse(parser: &mut Parser<impl Iterator<Item = (Token, Span)>>) -> Option<Expression> {
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, ExpressionError> for Expression {
+    fn parse(parser: &mut Parser<I>) -> Result<Expression, Option<ExpressionError>> {
         Expression::equality(parser)
     }
 }
@@ -63,49 +82,58 @@ impl Expression {
         Display::new(self, true)
     }
 
+    pub fn get_type(&self) -> Option<Type> {
+        match self {
+            Expression::Group(g) => g.get_type(),
+            Expression::Literal(l) => l.get_type(),
+            _ => None,
+        }
+    }
+
     pub fn equality(
         parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
-    ) -> Option<Expression> {
+    ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::comparison(parser)?;
         loop {
-            let operator =
-                if let Some((Token::Equals | Token::Exclamation, _)) = parser.lexer.peek() {
-                    let equals = matches!(parser.lexer.next()?, (Token::Equals, _));
-                    if let (Token::Equals, _) = parser.lexer.next()? {
-                        if equals {
-                            EqualityOperator::Equals
-                        } else {
-                            EqualityOperator::NotEquals
-                        }
+            let operator = if let Some((Token::Equals | Token::Exclamation, _)) =
+                parser.lexer.peek()
+            {
+                let equals = matches!(parser.lexer.next().convert_result()?, (Token::Equals, _));
+                if let (Token::Equals, _) = parser.lexer.next().convert_result()? {
+                    if equals {
+                        EqualityOperator::Equals
                     } else {
-                        return None;
+                        EqualityOperator::NotEquals
                     }
                 } else {
-                    parser.lexer.reset_peek();
-                    break;
-                };
+                    return Err(None);
+                }
+            } else {
+                parser.lexer.reset_peek();
+                break;
+            };
 
             let right = Expression::comparison(parser)?;
 
-            left = Expression::Binary {
-                operator: operator.into(),
+            left = Expression::Equality {
+                operator,
                 left: Box::new(left),
                 right: Box::new(right),
             }
-            .simplify_binary();
+            .simplify_equality();
         }
 
-        Some(left)
+        Ok(left)
     }
 
     pub fn comparison(
         parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
-    ) -> Option<Expression> {
+    ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::cast(parser)?;
         loop {
             let operator =
                 if let Some((Token::GreaterThan | Token::LessThan, _)) = parser.lexer.peek() {
-                    let (token, _) = parser.lexer.next()?;
+                    let (token, _) = parser.lexer.next().convert_result()?;
                     let equality = parser
                         .lexer
                         .peek()
@@ -133,24 +161,26 @@ impl Expression {
 
             let right = Expression::cast(parser)?;
 
-            left = Expression::Binary {
-                operator: operator.into(),
+            left = Expression::Comparison {
+                operator,
                 left: Box::new(left),
                 right: Box::new(right),
             }
-            .simplify_binary();
+            .simplify_comparison();
         }
 
-        Some(left)
+        Ok(left)
     }
 
-    pub fn cast(parser: &mut Parser<impl Iterator<Item = (Token, Span)>>) -> Option<Expression> {
+    pub fn cast(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::term(parser)?;
         loop {
             if let Some((Token::KeyAs, _)) = parser.lexer.peek() {
                 parser.lexer.next();
 
-                let cast_type = Type::parse(parser)?;
+                let cast_type = Type::parse(parser).convert_result()?;
 
                 left = Expression::Cast {
                     left: Box::new(left),
@@ -163,10 +193,12 @@ impl Expression {
             }
         }
 
-        Some(left)
+        Ok(left)
     }
 
-    pub fn term(parser: &mut Parser<impl Iterator<Item = (Token, Span)>>) -> Option<Expression> {
+    pub fn term(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::factor(parser)?;
         loop {
             if let Some((token @ (Token::Plus | Token::Minus), _)) = parser.lexer.peek() {
@@ -180,22 +212,24 @@ impl Expression {
 
                 let right = Expression::factor(parser)?;
 
-                left = Expression::Binary {
-                    operator: operator.into(),
+                left = Expression::Term {
+                    operator,
                     left: Box::new(left),
                     right: Box::new(right),
                 }
-                .simplify_binary();
+                .simplify_term();
             } else {
                 parser.lexer.reset_peek();
                 break;
             }
         }
 
-        Some(left)
+        Ok(left)
     }
 
-    pub fn factor(parser: &mut Parser<impl Iterator<Item = (Token, Span)>>) -> Option<Expression> {
+    pub fn factor(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::unary(parser)?;
 
         loop {
@@ -210,110 +244,75 @@ impl Expression {
 
                 let right = Expression::unary(parser)?;
 
-                left = Expression::Binary {
-                    operator: operator.into(),
+                left = Expression::Factor {
+                    operator,
                     left: Box::new(left),
                     right: Box::new(right),
                 }
-                .simplify_binary();
+                .simplify_factor();
             } else {
                 parser.lexer.reset_peek();
                 break;
             }
         }
 
-        Some(left)
+        Ok(left)
     }
 
-    pub fn unary(parser: &mut Parser<impl Iterator<Item = (Token, Span)>>) -> Option<Expression> {
-        if let Some((token, _)) = parser.lexer.peek() {
-            match token {
-                t @ (Token::Exclamation | Token::Minus) => {
-                    let operator = match t {
-                        Token::Exclamation => UnaryOperator::LogicalNegate,
-                        Token::Minus => UnaryOperator::Negate,
-                        _ => unreachable!(),
-                    };
+    pub fn unary(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
+        let operator = match UnaryOperator::parse(parser) {
+            Ok(operator) => operator,
+            Err(_) => return Expression::primary(parser),
+        };
+        let right = Box::new(Expression::unary(parser)?);
 
-                    parser.lexer.next();
+        Ok(Expression::Unary { operator, right })
+    }
 
-                    let expression = Expression::Unary {
-                        operator,
-                        right: Box::new(Expression::unary(parser)?),
-                    };
-
-                    Some(expression.simplify_unary())
-                }
-
-                _ => {
-                    parser.lexer.reset_peek();
-                    Expression::primary(parser)
-                }
-            }
-        } else {
-            None
+    pub fn primary(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
+        match Literal::parse(parser) {
+            Ok(literal) => Ok(Expression::Literal(literal)),
+            Err(None) => match Expression::external(parser) {
+                Ok(_external) => todo!(),
+                Err(None) => match Expression::group(parser) {
+                    g @ Ok(_) => g,
+                    Err(None) => Err(None),
+                    Err(Some(error)) => error.convert_result(),
+                },
+                Err(Some(error)) => error.convert_result(),
+            },
+            Err(Some(error)) => error.convert_result(),
         }
     }
 
-    pub fn primary(parser: &mut Parser<impl Iterator<Item = (Token, Span)>>) -> Option<Expression> {
-        if let Some((token, _)) = parser.lexer.peek() {
-            let value = match token {
-                Token::KeyNil => Some(Literal::Nil.to_expression()),
-                Token::LitInteger(i) => {
-                    let removed_underscores: String = i.chars().filter(|c| *c != '_').collect();
-                    match removed_underscores.parse::<i64>() {
-                        Ok(i) => Some(Literal::Integer(i).to_expression()),
-                        Err(_) => match i.parse::<u64>() {
-                            Ok(i) => Some(Literal::UnsignedInteger(i).to_expression()),
-                            Err(_) => None,
-                        },
-                    }
-                }
-                Token::LitFloat(f) => {
-                    let removed_underscores: String = f.chars().filter(|c| *c != '_').collect();
-                    match removed_underscores.parse::<f64>() {
-                        Ok(f) => Some(Literal::FloatingPoint(f).to_expression()),
-                        Err(_) => todo!(),
-                    }
-                }
-                Token::LitBool(b) => Some(Literal::Boolean(*b).to_expression()),
-                Token::LitChar(c) => {
-                    let mut escaper = EscapeToken::lexer(c);
+    pub fn group(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
+        if let Some(Token::OpenParen) = parser.peek_token::<1>()[0] {
+            parser.read::<1>();
 
-                    match (escaper.next(), escaper.next()) {
-                        (None, None) => None,
-                        (None, Some(_)) => unreachable!(),
-                        (Some(t), None) => Some(Literal::Character(t.char()?).to_expression()),
-                        (Some(_), Some(_)) => None,
-                    }
-                }
-                Token::LitString(s) => {
-                    let string: Option<String> = EscapeToken::lexer(s).map(|t| t.char()).collect();
+            let expression = Box::new(Expression::parse(parser)?);
 
-                    string.map(|s| Literal::String(s).to_expression())
-                }
-                Token::Identifier(i) => Some(Expression::Variable(i.clone())), // TODO: Handle function calls
-                Token::OpenParen => {
-                    parser.lexer.next();
-                    let expr = Expression::parse(parser)?;
-                    if let Some((Token::CloseParen, _)) = parser.lexer.peek() {
-                        Some(Expression::Group(Box::new(expr)).simplify_group())
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            };
-            if value.is_some() {
-                parser.lexer.next();
-            } else {
-                parser.lexer.reset_peek();
+            if let Some(Token::CloseParen) = parser.read_token::<1>()[0] {
+                return Ok(Expression::Group(expression).simplify_group());
             }
-
-            value
         } else {
-            None
+            parser.reset_peek();
         }
+
+        Err(None)
+    }
+
+    /// This will attempt to parse references to variables, function calls, etc, in the future.
+    pub fn external(
+        _parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
+        // TODO: Write functionality
+        Err(None)
     }
 }
 
@@ -323,6 +322,16 @@ impl std::fmt::Display for Expression {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum ExpressionError {
+    #[error("{0}")]
+    InvalidType(#[from] TypeError),
+    #[error("{0}")]
+    InvalidLiteral(#[from] LiteralError),
+}
+
+convert_result_impl!(ExpressionError);
+
 #[cfg(test)]
 mod tests {
     use crate::parser::{Parse, Parser};
@@ -331,7 +340,7 @@ mod tests {
 
     #[test]
     fn test() {
-        let test = "!!true == true";
+        let test = "(((5 + 6)))";
 
         let mut parser = <Parser>::from_source(test); // dafaq
 

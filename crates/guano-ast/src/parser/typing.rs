@@ -1,8 +1,9 @@
 use guano_lexer::{Span, Token};
+use thiserror::Error;
 
 use super::{Parse, Parser};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     String,
     Character,
@@ -11,10 +12,11 @@ pub enum Type {
     Boolean,
     FloatingPoint,
     Custom(String),
+    Slice(Box<Type>),
 }
 
-impl Parse for Type {
-    fn parse(parser: &mut Parser<impl Iterator<Item = (Token, Span)>>) -> Option<Self> {
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, TypeError> for Type {
+    fn parse(parser: &mut Parser<I>) -> Result<Type, Option<TypeError>> {
         if let Some((token, _)) = parser.lexer.peek() {
             let output = match token {
                 Token::PrimStr => Type::String,
@@ -23,18 +25,30 @@ impl Parse for Type {
                 Token::PrimInteger => Type::Integer,
                 Token::PrimFloat => Type::FloatingPoint,
                 Token::PrimBool => Type::Boolean,
-                Token::Identifier(i) => Type::Custom(i.clone()),
+                // Token::Identifier(i) => Type::Custom(i.clone()),
+                Token::Identifier(_) => {
+                    parser.lexer.reset_peek();
+                    return Err(Some(TypeError::CustomTypingNotAvailable));
+                }
+                Token::OpenBracket => {
+                    parser.lexer.next();
+                    if let Some((Token::CloseBracket, _)) = parser.lexer.next() {
+                        let sub_type = Type::parse(parser)?;
+                        return Ok(Type::Slice(Box::new(sub_type)));
+                    } else {
+                        return Err(None);
+                    }
+                }
                 _ => {
                     parser.lexer.reset_peek();
-                    return None;
+                    return Err(None);
                 }
             };
-
             parser.lexer.next();
-
-            Some(output)
+            Ok(output)
         } else {
-            None
+            parser.lexer.reset_peek();
+            Err(None)
         }
     }
 }
@@ -48,7 +62,14 @@ impl std::fmt::Display for Type {
             Type::UnsignedInteger => "uint",
             Type::Boolean => "boolean",
             Type::FloatingPoint => "float",
+            Type::Slice(t) => return write!(f, "[]{t}"),
             Type::Custom(c) => return write!(f, "{c}"),
         })
     }
+}
+
+#[derive(Debug, Clone, Error)]
+pub enum TypeError {
+    #[error("custom types not implemented as of yet")]
+    CustomTypingNotAvailable,
 }
