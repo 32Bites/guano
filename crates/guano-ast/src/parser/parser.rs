@@ -1,6 +1,4 @@
-use std::{
-    iter::Filter,
-};
+use std::iter::Filter;
 
 use guano_lexer::{logos::Logos, Span, SpannedLexer, ToSpanned, Token};
 use itertools::{Itertools, MultiPeek};
@@ -15,10 +13,11 @@ pub struct Parser<I: Iterator<Item = (Token, Span)> = Box<dyn Iterator<Item = (T
     // pub sources: HashMap<PathBuf, u8>,
     pub stack: Vec<ParseState>,
     pub lexer: MultiPeek<I>,
+    pub(crate) simplified_expressions: bool
 }
 
 impl<I: Iterator<Item = (Token, Span)>> Parser<I> {
-    pub fn new(iterator: I) -> Parser<Filter<I, fn(&(Token, Span)) -> bool>> {
+    pub fn new(iterator: I, simplified_expressions: bool) -> Parser<Filter<I, fn(&(Token, Span)) -> bool>> {
         fn filter((t, _): &(Token, Span)) -> bool {
             !matches!(t, Token::CommMulti(_) | Token::CommSingle(_))
         }
@@ -27,13 +26,15 @@ impl<I: Iterator<Item = (Token, Span)>> Parser<I> {
             lexer: iterator
                 .filter::<fn(&(Token, Span)) -> bool>(filter)
                 .multipeek(),
+            simplified_expressions
         }
     }
 
     pub fn from_source<'a>(
         source: &'a str,
+        simplified_expressions: bool
     ) -> Parser<Filter<SpannedLexer<'a, Token>, fn(&(Token, Span)) -> bool>> {
-        Parser::new(Token::lexer(source).to_spanned())
+        Parser::new(Token::lexer(source).to_spanned(), simplified_expressions)
     }
 
     pub fn peek_token<const N: usize>(&mut self) -> [Option<Token>; N] {

@@ -1,15 +1,17 @@
 use std::{cmp::Ordering, str::FromStr};
 
-use bigdecimal::{BigDecimal, ToPrimitive, Zero, num_bigint::ParseBigIntError, ParseBigDecimalError};
-use guano_lexer::{
-    escape_char::Token as EscapeToken,
-    logos::Logos,
-    Span, Token,
+use bigdecimal::{
+    num_bigint::{ParseBigIntError, ToBigInt},
+    BigDecimal, ParseBigDecimalError, ToPrimitive, Zero,
 };
+use guano_lexer::{escape_char::Token as EscapeToken, logos::Logos, Span, Token};
 use num::BigInt;
 use thiserror::Error;
 
-use crate::{parser::{typing::Type, Parse, ConvertResult}, convert_result_impl};
+use crate::{
+    convert_result_impl,
+    parser::{typing::Type, ConvertResult, Parse},
+};
 
 use super::parser::Expression;
 
@@ -50,6 +52,74 @@ impl Literal {
             Literal::FloatingPoint(_) => Type::FloatingPoint,
             Literal::Boolean(_) => Type::Boolean,
             Literal::Nil | Literal::Integer(_) => return None,
+        })
+    }
+
+    pub fn bs_left(&self, rhs: &Self) -> Option<Self> {
+        Some(match (self, rhs) {
+            (Literal::Integer(lhs), Literal::Integer(rhs)) => {
+                match (lhs.to_i128(), rhs.to_i128()) {
+                    (Some(lhs), Some(rhs)) => Literal::Integer((lhs << rhs).to_bigint()?),
+                    _ => match (lhs.to_u128(), rhs.to_u128()) {
+                        (Some(lhs), Some(rhs)) => Literal::Integer((lhs << rhs).to_bigint()?),
+                        _ => return None,
+                    },
+                }
+            }
+            _ => return None,
+        })
+    }
+
+    pub fn bs_right(&self, rhs: &Self) -> Option<Self> {
+        Some(match (self, rhs) {
+            (Literal::Integer(lhs), Literal::Integer(rhs)) => {
+                match (lhs.to_i128(), rhs.to_i128()) {
+                    (Some(lhs), Some(rhs)) => Literal::Integer((lhs >> rhs).to_bigint()?),
+                    _ => match (lhs.to_u128(), rhs.to_u128()) {
+                        (Some(lhs), Some(rhs)) => Literal::Integer((lhs >> rhs).to_bigint()?),
+                        _ => return None,
+                    },
+                }
+            }
+            _ => return None,
+        })
+    }
+
+    pub fn b_and(&self, rhs: &Self) -> Option<Self> {
+        Some(match (self, rhs) {
+            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs & rhs),
+            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(lhs & rhs),
+            _ => return None,
+        })
+    }
+
+    pub fn b_or(&self, rhs: &Self) -> Option<Self> {
+        Some(match (self, rhs) {
+            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs | rhs),
+            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(lhs | rhs),
+            _ => return None,
+        })
+    }
+
+    pub fn b_xor(&self, rhs: &Self) -> Option<Self> {
+        Some(match (self, rhs) {
+            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs ^ rhs),
+            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(lhs ^ rhs),
+            _ => return None,
+        })
+    }
+
+    pub fn l_and(&self, rhs: &Self) -> Option<Self> {
+        Some(match (self, rhs) {
+            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(*lhs && *rhs),
+            _ => return None
+        })
+    }
+
+    pub fn l_or(&self, rhs: &Self) -> Option<Self> {
+        Some(match (self, rhs) {
+            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(*lhs || *rhs),
+            _ => return None
         })
     }
 
@@ -215,13 +285,13 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, LiteralError> for Literal {
                         (None, None) | (Some(_), Some(_)) => {
                             parser.reset_peek();
                             return LiteralError::InvalidCharacter.convert_result();
-                        },
+                        }
                         (Some(token), None) => match token.char() {
                             Some(character) => Literal::Character(character),
                             None => {
                                 parser.reset_peek();
                                 return LiteralError::InvalidCharacter.convert_result();
-                            },
+                            }
                         },
                         (None, Some(_)) => unreachable!(),
                     }
@@ -235,14 +305,12 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, LiteralError> for Literal {
                     Err(e) => {
                         parser.reset_peek();
                         return e.convert_result();
-                    },
+                    }
                 };
                 Literal::Integer(integer)
             }
 
-            [Some(Token::LitBool(boolean))] => {
-                Literal::Boolean(boolean)
-            }
+            [Some(Token::LitBool(boolean))] => Literal::Boolean(boolean),
 
             [Some(Token::LitFloat(float))] => {
                 let float_string: String = float.chars().filter(|c| *c != '_').collect();
@@ -251,14 +319,12 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, LiteralError> for Literal {
                     Err(e) => {
                         parser.reset_peek();
                         return e.convert_result();
-                    },
+                    }
                 };
                 Literal::FloatingPoint(float)
             }
 
-            [Some(Token::KeyNil)] => {
-                Literal::Nil
-            }
+            [Some(Token::KeyNil)] => Literal::Nil,
 
             _ => {
                 parser.reset_peek();
@@ -283,7 +349,7 @@ pub enum LiteralError {
     #[error("invalid integer literal")]
     InvalidInteger(#[from] ParseBigIntError),
     #[error("invalid floating point literal")]
-    InvalidFloat(#[from] ParseBigDecimalError)
+    InvalidFloat(#[from] ParseBigDecimalError),
 }
 
 convert_result_impl!(LiteralError);

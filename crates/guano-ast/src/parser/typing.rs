@@ -27,7 +27,7 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, TypeError> for Type {
                 Token::PrimBool => Type::Boolean,
                 // Token::Identifier(i) => Type::Custom(i.clone()),
                 Token::Identifier(_) => {
-                    parser.lexer.reset_peek();
+                    parser.reset_peek();
                     return Err(Some(TypeError::CustomTypingNotAvailable));
                 }
                 Token::OpenBracket => {
@@ -40,14 +40,14 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, TypeError> for Type {
                     }
                 }
                 _ => {
-                    parser.lexer.reset_peek();
+                    parser.reset_peek();
                     return Err(None);
                 }
             };
             parser.lexer.next();
             Ok(output)
         } else {
-            parser.lexer.reset_peek();
+            parser.reset_peek();
             Err(None)
         }
     }

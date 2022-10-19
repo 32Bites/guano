@@ -12,7 +12,10 @@ use crate::{
 use super::{
     display::Display,
     literal::{Literal, LiteralError},
-    operator::{ComparisonOperator, EqualityOperator, FactorOperator, TermOperator, UnaryOperator},
+    operator::{
+        BitShiftParser, BitwiseOperationParser, BitwiseOperator, ComparisonOperator,
+        EqualityOperator, FactorOperator, LogicalOperator, TermOperator, UnaryOperator,
+    },
     simplify::Simplify,
 };
 
@@ -49,6 +52,16 @@ pub enum Expression {
         left: Box<Expression>,
         right: Box<Expression>,
     },
+    Bitwise {
+        operator: BitwiseOperator,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+    Logical {
+        operator: LogicalOperator,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
     /*     Format {
         format_string: String,
         arguments: Vec<Expression>,
@@ -69,7 +82,7 @@ pub enum Expression {
 
 impl<I: Iterator<Item = (Token, Span)>> Parse<I, ExpressionError> for Expression {
     fn parse(parser: &mut Parser<I>) -> Result<Expression, Option<ExpressionError>> {
-        Expression::equality(parser)
+        Expression::logical(parser)
     }
 }
 
@@ -90,6 +103,28 @@ impl Expression {
         }
     }
 
+    pub fn logical(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
+        let mut left = Expression::equality(parser)?;
+        loop {
+            if let Ok(operator) = LogicalOperator::parse(parser) {
+                let right = Box::new(Expression::equality(parser)?);
+
+                left = Expression::Logical {
+                    operator,
+                    left: Box::new(left),
+                    right,
+                }.simplify_logical(parser.simplified_expressions)
+            } else {
+                parser.reset_peek();
+                break;
+            }
+        }
+
+        Ok(left)
+    }
+
     pub fn equality(
         parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
     ) -> Result<Expression, Option<ExpressionError>> {
@@ -103,7 +138,7 @@ impl Expression {
                     left: Box::new(left),
                     right,
                 }
-                .simplify_equality();
+                .simplify_equality(parser.simplified_expressions);
             } else {
                 parser.reset_peek();
                 break;
@@ -116,18 +151,18 @@ impl Expression {
     pub fn comparison(
         parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
     ) -> Result<Expression, Option<ExpressionError>> {
-        let mut left = Expression::cast(parser)?;
+        let mut left = Expression::binary_bitwise(parser)?;
 
         loop {
             if let Ok(operator) = ComparisonOperator::parse(parser) {
-                let right = Box::new(Expression::cast(parser)?);
+                let right = Box::new(Expression::binary_bitwise(parser)?);
 
                 left = Expression::Comparison {
                     operator,
                     left: Box::new(left),
                     right,
                 }
-                .simplify_comparison();
+                .simplify_comparison(parser.simplified_expressions);
             } else {
                 parser.reset_peek();
                 break;
@@ -137,23 +172,45 @@ impl Expression {
         Ok(left)
     }
 
-    pub fn cast(
+    pub fn binary_bitwise(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
+        let mut left = Expression::bitshift(parser)?;
+        loop {
+            if let Ok(operator) = BitwiseOperationParser::parse(parser) {
+                let right = Box::new(Expression::bitshift(parser)?);
+
+                left = Expression::Bitwise {
+                    operator,
+                    left: Box::new(left),
+                    right,
+                }
+                .simplify_bitwise(parser.simplified_expressions)
+            } else {
+                parser.reset_peek();
+                break;
+            }
+        }
+
+        Ok(left)
+    }
+
+    pub fn bitshift(
         parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
     ) -> Result<Expression, Option<ExpressionError>> {
         let mut left = Expression::term(parser)?;
         loop {
-            if let Some((Token::KeyAs, _)) = parser.lexer.peek() {
-                parser.lexer.next();
+            if let Ok(operator) = BitShiftParser::parse(parser) {
+                let right = Box::new(Expression::term(parser)?);
 
-                let cast_type = Type::parse(parser).convert_result()?;
-
-                left = Expression::Cast {
+                left = Expression::Bitwise {
+                    operator,
                     left: Box::new(left),
-                    cast_to: cast_type,
+                    right,
                 }
-                .simplify_cast();
+                .simplify_bitwise(parser.simplified_expressions)
             } else {
-                parser.lexer.reset_peek();
+                parser.reset_peek();
                 break;
             }
         }
@@ -174,7 +231,7 @@ impl Expression {
                     left: Box::new(left),
                     right,
                 }
-                .simplify_term()
+                .simplify_term(parser.simplified_expressions)
             } else {
                 parser.reset_peek();
                 break;
@@ -187,18 +244,41 @@ impl Expression {
     pub fn factor(
         parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
     ) -> Result<Expression, Option<ExpressionError>> {
-        let mut left = Expression::unary(parser)?;
+        let mut left = Expression::cast(parser)?;
 
         loop {
             if let Ok(operator) = FactorOperator::parse(parser) {
-                let right = Box::new(Expression::unary(parser)?);
+                let right = Box::new(Expression::cast(parser)?);
 
                 left = Expression::Factor {
                     operator,
                     left: Box::new(left),
                     right,
                 }
-                .simplify_factor();
+                .simplify_factor(parser.simplified_expressions);
+            } else {
+                parser.reset_peek();
+                break;
+            }
+        }
+
+        Ok(left)
+    }
+
+    pub fn cast(
+        parser: &mut Parser<impl Iterator<Item = (Token, Span)>>,
+    ) -> Result<Expression, Option<ExpressionError>> {
+        let mut left = Expression::unary(parser)?;
+        loop {
+            if let Some(Token::KeyAs) = parser.peek_token::<1>()[0] {
+                parser.read::<1>();
+                let cast_type = Type::parse(parser).convert_result()?;
+
+                left = Expression::Cast {
+                    left: Box::new(left),
+                    cast_to: cast_type,
+                }
+                .simplify_cast(parser.simplified_expressions);
             } else {
                 parser.reset_peek();
                 break;
@@ -217,7 +297,7 @@ impl Expression {
         };
         let right = Box::new(Expression::unary(parser)?);
 
-        Ok(Expression::Unary { operator, right })
+        Ok(Expression::Unary { operator, right }.simplify_unary(parser.simplified_expressions))
     }
 
     pub fn primary(
@@ -247,7 +327,7 @@ impl Expression {
             let expression = Box::new(Expression::parse(parser)?);
 
             if let Some(Token::CloseParen) = parser.read_token::<1>()[0] {
-                return Ok(Expression::Group(expression).simplify_group());
+                return Ok(Expression::Group(expression).simplify_group(parser.simplified_expressions));
             }
         } else {
             parser.reset_peek();
@@ -288,10 +368,10 @@ mod tests {
     use super::Expression;
 
     #[test]
-    fn test() {
-        let test = "(((5 <= 6)))";
+    fn test_expression() {
+        let test = "(5 + 6) << 1 >> 2";
 
-        let mut parser = <Parser>::from_source(test); // dafaq
+        let mut parser = <Parser>::from_source(test, true); // dafaq
 
         let expression = Expression::parse(&mut parser).unwrap();
 

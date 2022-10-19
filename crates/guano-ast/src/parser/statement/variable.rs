@@ -1,14 +1,17 @@
 use guano_lexer::{Span, Token};
 use thiserror::Error;
 
-use crate::{parser::{
-    expression::{
-        literal::Literal,
-        parser::{Expression, ExpressionError},
+use crate::{
+    convert_result_impl,
+    parser::{
+        expression::{
+            literal::Literal,
+            parser::{Expression, ExpressionError},
+        },
+        typing::{Type, TypeError},
+        ConvertResult, Parse, Parser,
     },
-    typing::{Type, TypeError},
-    ConvertResult, Parse, Parser,
-}, convert_result_impl};
+};
 
 #[derive(Debug, Clone)]
 pub enum Mutability {
@@ -129,7 +132,7 @@ mod tests {
                                         .join(" ");
                                     let statement = format!("{start}{semicolon}");
 
-                                    let mut parser = <Parser>::from_source(statement.as_str());
+                                    let mut parser = <Parser>::from_source(statement.as_str(), true);
 
                                     if let Ok(variable) = Variable::parse(&mut parser) {
                                         println!("Success: {statement}");

@@ -38,7 +38,7 @@ impl std::fmt::Display for Display<'_> {
                     Expression::Cast { left, cast_to } => {
                         write!(f, "{} as {cast_to}", self.sub(left))
                     }
-/*                     Expression::FunctionCall { name, arguments } => todo!(),
+                    /*                     Expression::FunctionCall { name, arguments } => todo!(),
                     Expression::Format {
                         format_string,
                         arguments,
@@ -51,22 +51,32 @@ impl std::fmt::Display for Display<'_> {
                         operator,
                         left,
                         right,
-                    } => write!(f, "{left} {operator} {right}"),
+                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
                     Expression::Term {
                         operator,
                         left,
                         right,
-                    } => write!(f, "{left} {operator} {right}"),
+                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
                     Expression::Comparison {
                         operator,
                         left,
                         right,
-                    } => write!(f, "{left} {operator} {right}"),
+                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
                     Expression::Equality {
                         operator,
                         left,
                         right,
-                    } => write!(f, "{left} {operator} {right}"),
+                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+                    Expression::Bitwise {
+                        operator,
+                        left,
+                        right,
+                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+                    Expression::Logical {
+                        operator,
+                        left,
+                        right,
+                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
                     _ => unreachable!(),
                 }?;
 

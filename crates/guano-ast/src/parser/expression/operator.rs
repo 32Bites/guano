@@ -1,6 +1,6 @@
 use guano_lexer::{Span, Token};
 
-use crate::parser::{Parse, Parser, ConvertResult};
+use crate::parser::{ConvertResult, Parse, Parser};
 
 use super::parser::ExpressionError;
 
@@ -17,9 +17,11 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for LogicalOpera
             [Some(Token::Ampersand), Some(Token::Ampersand)] => LogicalOperator::And,
             _ => {
                 parser.reset_peek();
-                return Err(None)
+                return Err(None);
             }
         };
+
+        parser.read::<2>();
 
         Ok(operator)
     }
@@ -37,11 +39,15 @@ impl std::fmt::Display for LogicalOperator {
 #[derive(Debug)]
 pub struct BitwiseOperationParser;
 
-impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError, BitwiseOperator> for BitwiseOperationParser {
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError, BitwiseOperator>
+    for BitwiseOperationParser
+{
     fn parse(parser: &mut Parser<I>) -> Result<BitwiseOperator, Option<OperatorError>> {
         let operator = match parser.peek_token::<2>() {
             [Some(Token::Pipe), o] if !matches!(o, Some(Token::Pipe)) => BitwiseOperator::Or,
-            [Some(Token::Ampersand), o] if !matches!(o, Some(Token::Ampersand)) => BitwiseOperator::And,
+            [Some(Token::Ampersand), o] if !matches!(o, Some(Token::Ampersand)) => {
+                BitwiseOperator::And
+            }
             [Some(Token::Caret), _] => BitwiseOperator::Xor,
             _ => {
                 parser.reset_peek();
@@ -58,7 +64,9 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError, BitwiseOperator>
 #[derive(Debug)]
 pub struct BitShiftParser;
 
-impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError, BitwiseOperator> for BitShiftParser {
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError, BitwiseOperator>
+    for BitShiftParser
+{
     fn parse(parser: &mut Parser<I>) -> Result<BitwiseOperator, Option<OperatorError>> {
         let operator = match parser.peek_token::<2>() {
             [Some(Token::LessThan), Some(Token::LessThan)] => BitwiseOperator::ShiftLeft,
@@ -94,7 +102,7 @@ impl std::fmt::Display for BitwiseOperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             BitwiseOperator::ShiftLeft => "<<",
-            BitwiseOperator::ShiftRight => "<<",
+            BitwiseOperator::ShiftRight => ">>",
             BitwiseOperator::Or => "|",
             BitwiseOperator::Xor => "^",
             BitwiseOperator::And => "&",
@@ -156,7 +164,7 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for EqualityOper
             [Some(Token::Exclamation), Some(Token::Equals)] => EqualityOperator::NotEquals,
             _ => {
                 parser.reset_peek();
-                return Err(None)
+                return Err(None);
             }
         };
 
@@ -192,7 +200,7 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for ComparisonOp
                 let operator = match t {
                     Token::GreaterThan => ComparisonOperator::GreaterThanEquals,
                     Token::LessThan => ComparisonOperator::LessThanEquals,
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 };
                 parser.read_token::<2>();
                 operator
@@ -237,7 +245,7 @@ impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for TermOperator
             [Some(Token::Minus)] => TermOperator::Subtract,
             _ => {
                 parser.reset_peek();
-                return Err(None)
+                return Err(None);
             }
         };
 
@@ -264,7 +272,7 @@ impl std::fmt::Display for FactorOperator {
 
 impl<I: Iterator<Item = (Token, Span)>> Parse<I, OperatorError> for FactorOperator {
     fn parse(parser: &mut Parser<I>) -> Result<Self, Option<OperatorError>> {
-        let operator = match parser.peek_token::<1>() {
+        let operator = match &parser.peek_token::<1>() {
             [Some(Token::Asterisk)] => FactorOperator::Multiply,
             [Some(Token::Slash)] => FactorOperator::Divide,
             _ => {

@@ -1,7 +1,10 @@
 use guano_lexer::{Span, Token};
 use thiserror::Error;
 
-use crate::{parser::{Parse, Parser, ConvertResult}, convert_result_impl};
+use crate::{
+    convert_result_impl,
+    parser::{ConvertResult, Parse, Parser},
+};
 
 use super::{
     function::FunctionError,
