@@ -6,6 +6,14 @@ use super::{
     parser::Expression,
 };
 
+
+/// Parse-time expression simplification, what is it?
+/// Well, depending on the type of expression, and the type(s) of it's child(ren),
+/// it may be reduced into a simpler expression.
+/// 
+/// Example: `2 + 2` is equivalent to `4`, so `2 + 2` will be replaced with the expression `4`.
+/// However, `2 + a`, which includes a variable, cannot be simplified at parse time (as of yet),
+/// so it will remain `2 + a`.
 pub trait Simplify: Sized {
     fn simplify_group(self, should_simplify: bool) -> Self;
     fn simplify_unary(self, should_simplify: bool) -> Self;
