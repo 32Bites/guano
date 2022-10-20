@@ -3,6 +3,7 @@ mod parser;
 pub mod scope;
 pub mod statement;
 pub mod typing;
+pub mod identifier;
 
 pub use parser::*;
 

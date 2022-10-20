@@ -6,8 +6,9 @@ use crate::{
     parser::{
         expression::{
             literal::Literal,
-            parser::{Expression, ExpressionError},
+            Expression, ExpressionError,
         },
+        identifier::{Identifier, IdentifierError},
         typing::{Type, TypeError},
         ConvertResult, Parse, Parser,
     },
@@ -19,65 +20,79 @@ pub enum Mutability {
     Immutable,
 }
 
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, VariableError> for Mutability {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<VariableError>> {
+        let mutability =
+            if let Some(token @ (Token::KeyLet | Token::KeyVar)) = &parser.peek_token::<1>()[0] {
+                match token {
+                    Token::KeyLet => Mutability::Immutable,
+                    Token::KeyVar => Mutability::Mutable,
+                    _ => unreachable!(),
+                }
+            } else {
+                parser.reset_peek();
+                return Err(None);
+            };
+
+        parser.read::<1>();
+
+        Ok(mutability)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Variable {
-    pub name: String,
+    pub identifier: Identifier,
     pub mutability: Mutability,
     pub value_type: Option<Type>,
     pub value: Expression,
 }
 
-impl<I: Iterator<Item = (Token, Span)> + std::fmt::Debug> Parse<I, VariableError> for Variable {
+impl<I: Iterator<Item = (Token, Span)>> Parse<I, VariableError> for Variable {
     fn parse(parser: &mut Parser<I>) -> Result<Variable, Option<VariableError>> {
-        if let Some((token @ (Token::KeyLet | Token::KeyVar), _)) = parser.lexer.peek() {
-            let mutability = match token {
-                Token::KeyLet => Mutability::Immutable,
-                Token::KeyVar => Mutability::Mutable,
-                _ => unreachable!(),
-            };
-            parser.lexer.next();
+        let mutability = Mutability::parse(parser)?;
+        let identifier = Identifier::parse(parser).convert_result()?;
 
-            if let Some((Token::Identifier(name), _)) = parser.lexer.next() {
-                let mut value_type = if let Some((Token::Colon, _)) = parser.lexer.peek() {
-                    parser.lexer.next();
-                    Some(Type::parse(parser).convert_result()?)
-                } else {
-                    parser.lexer.reset_peek();
-                    None
-                };
+        let mut value_type = if let Some(Token::Colon) = parser.peek_token::<1>()[0] {
+            parser.read::<1>();
 
-                let value = if let Some((Token::Equals, _)) = parser.lexer.peek() {
-                    parser.lexer.next();
-                    Expression::parse(parser).convert_result()?
-                } else {
-                    parser.lexer.reset_peek();
-                    Literal::Nil.to_expression()
-                };
+            Some(Type::parse(parser).convert_result()?)
+        } else {
+            parser.reset_peek();
+            None
+        };
 
-                if let Some(value_type) = &value_type {
-                    if let Some(actual_type) = value.get_type() {
-                        if value_type.clone() != actual_type {
-                            return Err(None);
-                        }
-                    }
-                } else {
-                    value_type = value.get_type()
-                }
+        let value = if let Some(Token::Equals) = parser.peek_token::<1>()[0] {
+            parser.read::<1>();
+            Expression::parse(parser).convert_result()?
+        } else {
+            parser.reset_peek();
+            Literal::Nil.to_expression()
+        };
 
-                if let Some((Token::Semicolon, _)) = parser.lexer.next() {
-                    return Ok(Variable {
-                        name,
-                        mutability,
-                        value_type,
-                        value,
-                    });
+        if let Some(value_type) = &value_type {
+            if let Some(actual_type) = value.get_type() {
+                if value_type.clone() != actual_type {
+                    return Err(Some(VariableError::TypeMismatch));
                 }
             }
         } else {
-            parser.lexer.reset_peek();
+            value_type = value.get_type()
         }
 
-        Err(None)
+        if let Some(Token::Semicolon) = parser.peek_token::<1>()[0] {
+            parser.read::<1>();
+            
+            Ok(Variable {
+                identifier,
+                mutability,
+                value_type,
+                value,
+            })
+        } else {
+            parser.reset_peek();
+            Err(Some(VariableError::ExpectedSemicolon))
+        }
     }
 }
 
@@ -87,6 +102,12 @@ pub enum VariableError {
     InvalidType(#[from] TypeError),
     #[error("{0}")]
     InvalidExpression(#[from] ExpressionError),
+    #[error("{0}")]
+    InvalidIdentifier(#[from] IdentifierError),
+    #[error("value type of expression does not match the specified type")]
+    TypeMismatch,
+    #[error("no deliminating semicolon was found")]
+    ExpectedSemicolon,
 }
 
 convert_result_impl!(VariableError);
@@ -132,7 +153,8 @@ mod tests {
                                         .join(" ");
                                     let statement = format!("{start}{semicolon}");
 
-                                    let mut parser = <Parser>::from_source(statement.as_str(), true);
+                                    let mut parser =
+                                        <Parser>::from_source(statement.as_str(), true);
 
                                     if let Ok(variable) = Variable::parse(&mut parser) {
                                         println!("Success: {statement}");

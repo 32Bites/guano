@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::{
     convert_result_impl,
-    parser::{ConvertResult, Parse, Parser},
+    parser::{ConvertResult, Parse, Parser, expression::Expression},
 };
 
 use super::{
@@ -14,6 +14,7 @@ use super::{
 #[derive(Debug, Clone)]
 pub enum Statement {
     Variable(Variable),
+    Expression(Expression)
 }
 
 impl<I: Iterator<Item = (Token, Span)> + std::fmt::Debug> Parse<I, StatementError> for Statement {
