@@ -1,11 +1,11 @@
 use std::ops::Range;
 
-use guano_lexer::{Span, Token};
+use guano_lexer::Token;
 use thiserror::Error;
 
 use crate::parser::{
     error::{ParseError, ParseResult, ToParseError, ToParseResult},
-    Parse, ParseContext, TokenStream,
+    Parse, ParseContext,
 };
 
 use super::{Statement, StatementError};
@@ -80,9 +80,6 @@ pub enum BlockError {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::Parse;
-
-    use super::Block;
 
     #[test]
     fn test_block() {

@@ -1,11 +1,9 @@
-use std::{collections::HashSet, marker::PhantomData, ops::Range};
-
-use guano_lexer::{Span, Token};
+use guano_lexer::Token;
 use thiserror::Error;
 
 use super::{
-    error::{ParseError, ParseResult, ToParseError, ToParseResult},
-    Parse, ParseContext, TokenStream,
+    error::{ParseError, ParseResult, ToParseError},
+    Parse, ParseContext,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

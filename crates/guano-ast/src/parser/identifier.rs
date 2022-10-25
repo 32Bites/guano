@@ -1,13 +1,13 @@
-use std::{mem, ops::Range};
+use std::mem;
 
 use convert_case::{Boundary, Case, Casing, StateConverter};
-use guano_lexer::{Span, Token};
+use guano_lexer::Token;
 
 use crate::empty_error;
 
 use super::{
-    error::{EmptyError, ParseError, ParseResult, ToParseError},
-    Parse, ParseContext, TokenStream,
+    error::{ ParseError, ParseResult},
+    Parse, ParseContext,
 };
 
 fn identify_casing(string: &str) -> Option<Case> {

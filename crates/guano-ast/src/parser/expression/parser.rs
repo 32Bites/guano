@@ -1,10 +1,8 @@
-use std::ops::Range;
-
-use guano_lexer::{Span, Token};
+use guano_lexer::Token;
 use thiserror::Error;
 
 use crate::parser::{
-    error::{EmptyError, ParseError, ParseResult, ToParseError, ToParseResult},
+    error::{ParseError, ParseResult, ToParseError, ToParseResult},
     identifier::{Identifier, IdentifierError},
     typing::{Type, TypeError},
     Parse, ParseContext,
@@ -14,7 +12,7 @@ use super::{
     display::Display,
     literal::{Literal, LiteralError},
     operator::{
-        self, BitwiseOperator, ComparisonOperator, EqualityOperator, FactorOperator,
+        BitwiseOperator, ComparisonOperator, EqualityOperator, FactorOperator,
         LogicalOperator, TermOperator, UnaryOperator,
     },
     simplify::Simplify,

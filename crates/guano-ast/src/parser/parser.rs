@@ -1,10 +1,10 @@
 use codespan::{FileId, Files};
 use std::{
-    collections::HashMap, ffi::OsString, iter::Chain, ops::Range, rc::Rc, slice::Iter, sync::Arc,
+    collections::HashMap, ffi::OsString, ops::Range, sync::Arc,
     vec::IntoIter,
 };
 
-use guano_lexer::{logos::Logos, NewSpannedLexer, Span, ToSpanned, Token};
+use guano_lexer::{logos::Logos, NewSpannedLexer, Token};
 use itertools::{Itertools, MultiPeek};
 
 use super::{

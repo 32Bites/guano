@@ -1,14 +1,12 @@
-use std::ops::Range;
-
 use guano_lexer::Token;
 use thiserror::Error;
 
 use crate::parser::{
-    error::{EmptyError, ParseError, ParseResult, ToParseError, ToParseResult},
+    error::{ParseError, ParseResult, ToParseError, ToParseResult},
     expression::{Expression, ExpressionError},
     identifier::{Identifier, IdentifierError},
     typing::{Type, TypeError},
-    Parse, ParseContext, TokenStream,
+    Parse, ParseContext,
 };
 
 #[derive(Debug, Clone)]
@@ -143,7 +141,7 @@ pub enum VariableError {
 mod tests {
     use itertools::Itertools;
 
-    use crate::parser::{statement::Statement, Parse, Parser, ParseContext, error::ParseError};
+    use crate::parser::{Parser, error::ParseError};
 
     use super::VariableDeclaration;
 
@@ -185,7 +183,7 @@ mod tests {
                                     let (_, result) = parser.parse_file::<VariableDeclaration, _, _>("", &*statement);
                                     
                                     match result {
-                                        Ok(decl) => {
+                                        Ok(_decl) => {
                                             // println!("👍 {statement}");
                                             // println!("{decl:#?}")
                                         },

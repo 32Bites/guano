@@ -8,7 +8,7 @@ pub use parser::*;
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{Parse, Parser};
+    use crate::parser::Parser;
 
     use super::Expression;
 

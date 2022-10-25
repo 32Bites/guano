@@ -1,10 +1,10 @@
-use std::{cmp::Ordering, ops::Range, str::FromStr};
+use std::{cmp::Ordering, str::FromStr};
 
 use bigdecimal::{
-    num_bigint::{ParseBigIntError, Sign, ToBigInt},
+    num_bigint::{ParseBigIntError, ToBigInt},
     BigDecimal, ParseBigDecimalError, ToPrimitive, Zero,
 };
-use guano_lexer::{escape_char::Token as EscapeToken, logos::Logos, Span, Token};
+use guano_lexer::{escape_char::Token as EscapeToken, logos::Logos, Token};
 use num::BigInt;
 use thiserror::Error;
 

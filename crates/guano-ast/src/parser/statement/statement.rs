@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use guano_lexer::Token;
 use thiserror::Error;
 

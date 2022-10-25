@@ -1,11 +1,9 @@
-use std::{collections::HashMap, ops::Range};
-
-use guano_lexer::Token;
+use std::collections::HashMap;
 use thiserror::Error;
 
 use super::{
     error::ParseResult, function::Function, identifier::Identifier,
-    statement::variable::VariableDeclaration, Parse, ParseContext, TokenStream,
+    statement::variable::VariableDeclaration, Parse, ParseContext,
 };
 
 #[derive(Debug, Clone)]
@@ -16,7 +14,7 @@ pub struct SourceFile {
 
 impl Parse<SourceFileError> for SourceFile {
     fn parse(
-        context: &mut ParseContext,
+        _context: &mut ParseContext,
     ) -> ParseResult<Self, SourceFileError> {
         todo!()
     }

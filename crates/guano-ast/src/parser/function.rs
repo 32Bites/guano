@@ -1,15 +1,13 @@
-use std::ops::Range;
-
-use guano_lexer::{Span, Token};
+use guano_lexer::Token;
 use indexmap::{indexmap, IndexMap};
 use thiserror::Error;
 
 use super::{
-    error::{EmptyError, ParseError, ParseResult, ToParseError, ToParseResult},
+    error::{ParseError, ParseResult, ToParseResult},
     identifier::{Identifier, IdentifierError},
     statement::block::{Block, BlockError},
     typing::{Type, TypeError},
-    Parse, ParseContext, TokenStream,
+    Parse, ParseContext,
 };
 
 #[derive(Debug, Clone)]

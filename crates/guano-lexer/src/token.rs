@@ -379,8 +379,6 @@ fn multiline_comment(lex: &mut Lexer<Token>) -> Option<(String, Vec<usize>)> {
 mod tests {
     use logos::Logos;
 
-    use crate::spanned_lexer::ToSpanned;
-
     use super::Token;
 
     #[test]
@@ -392,17 +390,15 @@ mod tests {
         ""#;
         let character = r#"'H' '"#;
 
-        let mut string_lexer = Token::lexer(string).to_spanned();
+        let mut string_lexer = Token::lexer(string).spanned();
 
         while let Some((token, _)) = string_lexer.next() {
             if let Token::Error = token {
-                println!("Error causing string: {:#?}", string_lexer.slice());
+                println!("Error happened");
             } else {
                 println!("{:#?}", token);
             }
         }
-
-        println!("{:#?}", string_lexer.lines());
 
         println!("------");
 
@@ -422,13 +418,12 @@ mod tests {
         let single = "## Hello, world!\n _ignore ## Other Comment";
         let multi = "#$ Rando!\r\n\n\n\n\nPPPEEEE  \n$$\n$$$$# \n\n#$$#\n\n###";
 
-        let mut single_lexer = Token::lexer(single).to_spanned();
+        let mut single_lexer = Token::lexer(single).spanned();
 
-        while let Some((token, span)) = single_lexer.next() {
-            dbg!(single_lexer.line_segments(&span.line_span));
+        while let Some((token, _span)) = single_lexer.next() {
 
             if let Token::Error = token {
-                println!("Error causing string: {:#?}", single_lexer.slice());
+                println!("Error happened");
             } else {
                 println!("{:#?}", token);
             }
@@ -436,14 +431,13 @@ mod tests {
 
         println!("------");
 
-        let mut multi_lexer = Token::lexer(multi).to_spanned();
+        let mut multi_lexer = Token::lexer(multi).spanned();
 
-        while let Some((token, span)) = multi_lexer.next() {
-            dbg!(multi_lexer.line_segments(&span.line_span));
+        while let Some((token, _span)) = multi_lexer.next() {
 
             match token {
                 Token::Error => {
-                    println!("Error causing string: {:#?}", multi_lexer.slice());
+                    println!("Error happened");
                 }
                 Token::CommMulti((s, _)) => {
                     println!("Comment Contents: {:#?}", s);
@@ -451,7 +445,5 @@ mod tests {
                 _ => (),
             }
         }
-
-        println!("{:#?}", multi_lexer.lines());
     }
 }
