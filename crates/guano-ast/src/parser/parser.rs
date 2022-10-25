@@ -1,5 +1,4 @@
 use codespan::{FileId, Files};
-use dyn_clone::{clone_box, DynClone};
 use std::{
     collections::HashMap, ffi::OsString, iter::Chain, ops::Range, rc::Rc, slice::Iter, sync::Arc,
     vec::IntoIter,
