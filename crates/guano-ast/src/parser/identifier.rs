@@ -6,7 +6,7 @@ use guano_lexer::Token;
 use crate::empty_error;
 
 use super::{
-    error::{ ParseError, ParseResult},
+    error::{ParseError, ParseResult},
     Parse, ParseContext,
 };
 
@@ -91,9 +91,7 @@ impl Casing<String> for Identifier {
 }
 
 impl Parse<IdentifierError> for Identifier {
-    fn parse(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Identifier, IdentifierError> {
+    fn parse(parser: &mut ParseContext) -> ParseResult<Identifier, IdentifierError> {
         match &parser.stream.read::<1>()[0] {
             Some((Token::Identifier(identifier), _)) => Ok(identifier.into()),
             Some((_, span)) => Err(ParseError::unexpected_token(span.clone())),

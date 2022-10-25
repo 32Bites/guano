@@ -1,13 +1,8 @@
 use std::mem;
 
-use super::{
-    literal::Literal,
-    operator::{
-        BitwiseOperator, ComparisonOperator, EqualityOperator, FactorOperator, LogicalOperator,
-        TermOperator, UnaryOperator,
-    },
-    parser::Expression,
-};
+use crate::parser::operator::{Bitwise, Comparison, Factor, Logical, Term, Unary};
+
+use super::{literal::Literal, parser::Expression, BinaryExpression};
 
 /// Parse-time expression simplification, what is it?
 /// Well, depending on the type of expression, and the type(s) of it's child(ren),
@@ -21,7 +16,6 @@ pub trait Simplify: Sized {
     fn simplify_unary(self, should_simplify: bool) -> Self;
     fn simplify_cast(self, should_simplify: bool) -> Self;
     fn simplify_comparison(self, should_simplify: bool) -> Self;
-    fn simplify_equality(self, should_simplify: bool) -> Self;
     fn simplify_factor(self, should_simplify: bool) -> Self;
     fn simplify_term(self, should_simplify: bool) -> Self;
     fn simplify_bitwise(self, should_simplify: bool) -> Self;
@@ -47,7 +41,7 @@ impl Simplify for Expression {
         if should_simplify {
             if let Self::Unary { operator, right } = &self {
                 let to_replace = match operator {
-                    UnaryOperator::Negate => match &**right {
+                    Unary::Negate => match &**right {
                         Expression::Literal(literal) => match literal {
                             Literal::FloatingPoint(f) => Some(Literal::FloatingPoint(-f)),
                             Literal::Integer(i) => Some(Literal::Integer(-i)),
@@ -55,7 +49,7 @@ impl Simplify for Expression {
                         },
                         _ => None,
                     },
-                    UnaryOperator::LogicalNegate => match &**right {
+                    Unary::LogicalNegate => match &**right {
                         Expression::Literal(literal) => match literal {
                             Literal::Boolean(b) => Some(Literal::Boolean(!b)),
                             Literal::Integer(i) => Some(Literal::Integer(!i)),
@@ -94,45 +88,21 @@ impl Simplify for Expression {
 
     fn simplify_comparison(mut self, should_simplify: bool) -> Self {
         if should_simplify {
-            if let Self::Comparison {
-                operator,
+            if let Self::Comparison(BinaryExpression {
                 left,
+                operator,
                 right,
-            } = &self
+            }) = &self
             {
                 if let (Expression::Literal(left), Expression::Literal(right)) = (&**left, &**right)
                 {
                     let result = match operator {
-                        ComparisonOperator::GreaterThan => left.gt(right),
-                        ComparisonOperator::GreaterThanEquals => left.ge(right),
-                        ComparisonOperator::LessThan => left.lt(right),
-                        ComparisonOperator::LessThanEquals => left.le(right),
-                    }
-                    .map(|b| Literal::Boolean(b));
-
-                    if let Some(new) = result {
-                        let _ = mem::replace(&mut self, new.to_expression());
-                    }
-                }
-            }
-        }
-
-        self
-    }
-
-    fn simplify_equality(mut self, should_simplify: bool) -> Self {
-        if should_simplify {
-            if let Self::Equality {
-                operator,
-                left,
-                right,
-            } = &self
-            {
-                if let (Expression::Literal(left), Expression::Literal(right)) = (&**left, &**right)
-                {
-                    let result = match operator {
-                        EqualityOperator::Equals => left.eq(right),
-                        EqualityOperator::NotEquals => left.ne(right),
+                        Comparison::GreaterThan => left.gt(right),
+                        Comparison::GreaterThanEquals => left.ge(right),
+                        Comparison::LessThan => left.lt(right),
+                        Comparison::LessThanEquals => left.le(right),
+                        Comparison::Equals => left.eq(right),
+                        Comparison::NotEquals => left.ne(right),
                     }
                     .map(|b| Literal::Boolean(b));
 
@@ -148,17 +118,17 @@ impl Simplify for Expression {
 
     fn simplify_factor(mut self, should_simplify: bool) -> Self {
         if should_simplify {
-            if let Self::Factor {
-                operator,
+            if let Self::Factor(BinaryExpression {
                 left,
+                operator,
                 right,
-            } = &self
+            }) = &self
             {
                 if let (Expression::Literal(left), Expression::Literal(right)) = (&**left, &**right)
                 {
                     let result = match operator {
-                        FactorOperator::Multiply => left.mul(right),
-                        FactorOperator::Divide => left.div(right),
+                        Factor::Multiply => left.mul(right),
+                        Factor::Divide => left.div(right),
                     };
 
                     if let Some(new) = result {
@@ -173,17 +143,17 @@ impl Simplify for Expression {
 
     fn simplify_term(mut self, should_simplify: bool) -> Self {
         if should_simplify {
-            if let Self::Term {
-                operator,
+            if let Self::Term(BinaryExpression {
                 left,
+                operator,
                 right,
-            } = &self
+            }) = &self
             {
                 if let (Expression::Literal(left), Expression::Literal(right)) = (&**left, &**right)
                 {
                     let result = match operator {
-                        TermOperator::Add => left.add(right),
-                        TermOperator::Subtract => left.sub(right),
+                        Term::Add => left.add(right),
+                        Term::Subtract => left.sub(right),
                     };
 
                     if let Some(new) = result {
@@ -198,20 +168,20 @@ impl Simplify for Expression {
 
     fn simplify_bitwise(mut self, should_simplify: bool) -> Self {
         if should_simplify {
-            if let Self::Bitwise {
-                operator,
+            if let Self::Bitwise(BinaryExpression {
                 left,
+                operator,
                 right,
-            } = &self
+            }) = &self
             {
                 if let (Expression::Literal(left), Expression::Literal(right)) = (&**left, &**right)
                 {
                     let result = match operator {
-                        BitwiseOperator::ShiftLeft => left.bs_left(right),
-                        BitwiseOperator::ShiftRight => left.bs_right(right),
-                        BitwiseOperator::Or => left.b_or(right),
-                        BitwiseOperator::Xor => left.b_xor(right),
-                        BitwiseOperator::And => left.b_and(right),
+                        Bitwise::ShiftLeft => left.bs_left(right),
+                        Bitwise::ShiftRight => left.bs_right(right),
+                        Bitwise::Or => left.b_or(right),
+                        Bitwise::Xor => left.b_xor(right),
+                        Bitwise::And => left.b_and(right),
                     };
 
                     if let Some(new) = result {
@@ -226,17 +196,17 @@ impl Simplify for Expression {
 
     fn simplify_logical(mut self, should_simplify: bool) -> Self {
         if should_simplify {
-            if let Self::Logical {
-                operator,
+            if let Self::Logical(BinaryExpression {
                 left,
+                operator,
                 right,
-            } = &self
+            }) = &self
             {
                 if let (Expression::Literal(left), Expression::Literal(right)) = (&**left, &**right)
                 {
                     let result = match operator {
-                        LogicalOperator::And => left.l_and(right),
-                        LogicalOperator::Or => left.l_or(right),
+                        Logical::And => left.l_and(right),
+                        Logical::Or => left.l_or(right),
                     };
 
                     if let Some(new) = result {

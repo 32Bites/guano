@@ -7,20 +7,18 @@ use crate::parser::{
     Parse, ParseContext,
 };
 
-use super::variable::{VariableDeclaration, VariableError};
+use super::variable::{Variable, VariableError};
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Variable(VariableDeclaration),
+    Variable(Variable),
     Expression(Expression),
     Return(Option<Expression>),
     Empty,
 }
 
 impl Parse<StatementError> for Statement {
-    fn parse(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Statement, StatementError> {
+    fn parse(parser: &mut ParseContext) -> ParseResult<Statement, StatementError> {
         match &parser.stream.peek::<1>()[0] {
             Some((first_token, span)) => match first_token {
                 Token::KeyVar | Token::KeyLet => todo!(),
@@ -34,10 +32,8 @@ impl Parse<StatementError> for Statement {
 }
 
 impl Statement {
-    fn variable(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Statement, StatementError> {
-        match VariableDeclaration::parse(parser) {
+    fn variable(parser: &mut ParseContext) -> ParseResult<Statement, StatementError> {
+        match Variable::parse(parser) {
             Ok(statement) => Ok(Statement::Variable(statement)),
             Err(error) => match error {
                 ParseError::Spanned(Some(VariableError::InvalidMutability), _)
@@ -48,9 +44,7 @@ impl Statement {
         }
     }
 
-    fn expression(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Statement, StatementError> {
+    fn expression(parser: &mut ParseContext) -> ParseResult<Statement, StatementError> {
         match Expression::parse(parser) {
             Ok(expression) => Ok(Statement::Expression(expression)),
             Err(error) => match error {
@@ -65,9 +59,7 @@ impl Statement {
     // Ignore the random underscore, Rust's lexer does not seem to contextualize that `return`
     // in this circumstance refers not to the `return` keyword, but a function name... So the
     // underscore is just a hack to get the lexer to leave me alone ;-;
-    fn return_(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Statement, StatementError> {
+    fn return_(parser: &mut ParseContext) -> ParseResult<Statement, StatementError> {
         match parser.stream.read_token::<1>()[0] {
             Some(Token::KeyReturn) => {
                 let expression = Expression::parse(parser).ok();

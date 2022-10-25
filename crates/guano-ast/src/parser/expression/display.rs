@@ -1,4 +1,4 @@
-use super::parser::Expression;
+use super::{parser::Expression, BinaryExpression};
 
 #[derive(Debug)]
 pub struct Display<'expression> {
@@ -47,36 +47,31 @@ impl std::fmt::Display for Display<'_> {
                         owner,
                         accessed_value,
                     } => todo!(), */
-                    Expression::Factor {
-                        operator,
+                    Expression::Factor(BinaryExpression {
                         left,
-                        right,
-                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
-                    Expression::Term {
                         operator,
-                        left,
                         right,
-                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
-                    Expression::Comparison {
+                    }) => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+                    Expression::Term(BinaryExpression {
+                        left,
                         operator,
-                        left,
                         right,
-                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
-                    Expression::Equality {
+                    }) => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+                    Expression::Comparison(BinaryExpression {
+                        left,
                         operator,
-                        left,
                         right,
-                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
-                    Expression::Bitwise {
+                    }) => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+                    Expression::Bitwise(BinaryExpression {
+                        left,
                         operator,
-                        left,
                         right,
-                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
-                    Expression::Logical {
+                    }) => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+                    Expression::Logical(BinaryExpression {
+                        left,
                         operator,
-                        left,
                         right,
-                    } => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+                    }) => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
                     _ => unreachable!(),
                 }?;
 

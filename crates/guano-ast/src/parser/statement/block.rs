@@ -16,9 +16,7 @@ pub struct Block {
 }
 
 impl Parse<BlockError> for Block {
-    fn parse(
-        context: &mut ParseContext,
-    ) -> ParseResult<Block, BlockError> {
+    fn parse(context: &mut ParseContext) -> ParseResult<Block, BlockError> {
         match context.stream.read_token::<1>()[0] {
             Some(Token::OpenBrace) => {
                 let mut items: Vec<BlockItem> = vec![];

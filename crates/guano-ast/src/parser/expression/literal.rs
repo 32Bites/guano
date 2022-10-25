@@ -246,9 +246,7 @@ impl Literal {
 }
 
 impl Parse<LiteralError> for Literal {
-    fn parse(
-        context: &mut ParseContext,
-    ) -> ParseResult<Literal, LiteralError> {
+    fn parse(context: &mut ParseContext) -> ParseResult<Literal, LiteralError> {
         let literal = match &context.stream.read::<1>()[0] {
             Some((token, span)) => match token {
                 Token::LitString(string) => {
@@ -261,24 +259,30 @@ impl Parse<LiteralError> for Literal {
                             return Err(LiteralError::InvalidString.to_parse_error(span.clone()));
                         }
                     }
-    
+
                     Literal::String(parsed_string)
                 }
 
                 Token::LitChar(character) => {
                     if character.len() == 0 {
-                        return Err(LiteralError::EmptyCharacterLiteral.to_parse_error(span.clone()));
+                        return Err(
+                            LiteralError::EmptyCharacterLiteral.to_parse_error(span.clone())
+                        );
                     } else {
                         let mut escaper = EscapeToken::lexer(&character);
-    
+
                         match (escaper.next(), escaper.next()) {
                             (None, None) | (Some(_), Some(_)) => {
-                                return Err(LiteralError::InvalidCharacter.to_parse_error(span.clone()));
+                                return Err(
+                                    LiteralError::InvalidCharacter.to_parse_error(span.clone())
+                                );
                             }
                             (Some(token), None) => match token.char() {
                                 Some(character) => Literal::Character(character),
                                 None => {
-                                    return Err(LiteralError::InvalidCharacter.to_parse_error(span.clone()));
+                                    return Err(
+                                        LiteralError::InvalidCharacter.to_parse_error(span.clone())
+                                    );
                                 }
                             },
                             (None, Some(_)) => unreachable!(),
@@ -309,7 +313,7 @@ impl Parse<LiteralError> for Literal {
                     };
                     Literal::FloatingPoint(float)
                 }
-    
+
                 Token::LitNil => Literal::Nil,
                 _ => {
                     return Err(ParseError::unexpected_token(span.clone()));

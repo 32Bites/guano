@@ -94,7 +94,6 @@ impl<E: std::error::Error> ToParseError<E> for E {
     }
 }
 
-
 pub trait ToParseResult<E: std::error::Error, T> {
     fn to_parse_result(self) -> ParseResult<T, E>;
 }

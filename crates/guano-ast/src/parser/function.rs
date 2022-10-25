@@ -19,9 +19,7 @@ pub struct Function {
 }
 
 impl Parse<FunctionError> for Function {
-    fn parse(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Function, FunctionError> {
+    fn parse(parser: &mut ParseContext) -> ParseResult<Function, FunctionError> {
         let name = Function::name(parser)?;
         let return_type = todo!(); //Typed::parse_backtrack(parser).ok();
         let arguments = Function::arguments(parser).to_parse_result()?;
@@ -40,9 +38,7 @@ impl Parse<FunctionError> for Function {
 /// where it is broken up into individual functions that parse
 /// the various parts of a structure.
 impl Function {
-    fn name(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Identifier, FunctionError> {
+    fn name(parser: &mut ParseContext) -> ParseResult<Identifier, FunctionError> {
         match &parser.stream.read::<1>()[0] {
             Some((Token::KeyFun, _)) => Identifier::parse(parser).to_parse_result(),
             Some((_, span)) => Err(ParseError::unexpected_token(span.clone())),
@@ -50,9 +46,7 @@ impl Function {
         }
     }
 
-    fn return_type(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Option<Type>, FunctionError> {
+    fn return_type(parser: &mut ParseContext) -> ParseResult<Option<Type>, FunctionError> {
         if let Some(Token::Colon) = parser.stream.peek_token::<1>()[0] {
             parser.stream.read::<1>();
 
@@ -88,9 +82,7 @@ impl Function {
         Ok(arguments)
     }
 
-    fn argument(
-        parser: &mut ParseContext,
-    ) -> ParseResult<(Identifier, Type), ArgumentError> {
+    fn argument(parser: &mut ParseContext) -> ParseResult<(Identifier, Type), ArgumentError> {
         Ok((
             Identifier::parse(parser).to_parse_result()?,
             todo!(), /* Typed::parse(parser).to_parse_result()? */

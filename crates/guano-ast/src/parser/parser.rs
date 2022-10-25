@@ -1,8 +1,5 @@
 use codespan::{FileId, Files};
-use std::{
-    collections::HashMap, ffi::OsString, ops::Range, sync::Arc,
-    vec::IntoIter,
-};
+use std::{collections::HashMap, ffi::OsString, ops::Range, sync::Arc, vec::IntoIter};
 
 use guano_lexer::{logos::Logos, SpannedLexer, Token};
 use itertools::{Itertools, MultiPeek};
@@ -14,7 +11,7 @@ use super::{
 
 #[derive(Debug)]
 pub struct TokenStream {
-    pub(crate) incoming: MultiPeek<IntoIter<(Token, Option<Range<usize>>)>>,
+    incoming: MultiPeek<IntoIter<(Token, Option<Range<usize>>)>>,
 }
 
 impl TokenStream {

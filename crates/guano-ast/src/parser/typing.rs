@@ -19,9 +19,7 @@ pub enum Type {
 }
 
 impl Parse<TypeError> for Type {
-    fn parse(
-        context: &mut ParseContext,
-    ) -> ParseResult<Type, TypeError> {
+    fn parse(context: &mut ParseContext) -> ParseResult<Type, TypeError> {
         match &context.stream.peek::<1>()[0] {
             Some((token, span)) => match token {
                 Token::PrimStr
@@ -46,8 +44,7 @@ impl Parse<TypeError> for Type {
 }
 
 impl Type {
-    fn parse_primitive(context: &mut ParseContext) -> ParseResult<Type, TypeError>
-    {
+    fn parse_primitive(context: &mut ParseContext) -> ParseResult<Type, TypeError> {
         match &context.stream.read::<1>()[0] {
             Some((token, span)) => match token {
                 Token::PrimStr => Ok(Type::String),
@@ -62,8 +59,7 @@ impl Type {
         }
     }
 
-    fn parse_list(context: &mut ParseContext) -> ParseResult<Type, TypeError>
-    {
+    fn parse_list(context: &mut ParseContext) -> ParseResult<Type, TypeError> {
         match &context.stream.read::<2>() {
             [Some((token, span)), Some((second_token, second_span))] => match token {
                 Token::OpenBrace => match second_token {

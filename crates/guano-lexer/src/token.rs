@@ -421,7 +421,6 @@ mod tests {
         let mut single_lexer = Token::lexer(single).spanned();
 
         while let Some((token, _span)) = single_lexer.next() {
-
             if let Token::Error = token {
                 println!("Error happened");
             } else {
@@ -434,7 +433,6 @@ mod tests {
         let mut multi_lexer = Token::lexer(multi).spanned();
 
         while let Some((token, _span)) = multi_lexer.next() {
-
             match token {
                 Token::Error => {
                     println!("Error happened");

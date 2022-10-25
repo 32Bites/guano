@@ -10,14 +10,14 @@ use crate::parser::{
 };
 
 #[derive(Debug, Clone)]
-pub struct VariableDeclaration {
+pub struct Variable {
     pub mutability: Mutability,
     pub identifier: Identifier,
     pub provided_type: Option<Type>,
     pub value: Option<Expression>,
 }
 
-impl VariableDeclaration {
+impl Variable {
     fn parse_name(
         context: &mut ParseContext,
         mutability: &Mutability,
@@ -26,14 +26,14 @@ impl VariableDeclaration {
             Some((Token::Identifier(_), _)) => Identifier::parse(context).to_parse_result(),
             Some((_, span)) => {
                 context.stream.reset_peek();
-                let mut test_context = context.prepend(
-                    [
+                let mut test_context = context
+                    .prepend([
                         (mutability.token(), None),
                         (Token::Identifier("TEST".into()), None),
-                    ]
-                ).ok_or(ParseError::unexpected_token(span.clone()))?;
+                    ])
+                    .ok_or(ParseError::unexpected_token(span.clone()))?;
 
-                match VariableDeclaration::parse(&mut test_context) {
+                match Variable::parse(&mut test_context) {
                     Ok(_) => Err(VariableError::MissingName.to_parse_error(span.clone())),
                     Err(_) => Err(ParseError::unexpected_token(span.clone())),
                 }
@@ -44,12 +44,10 @@ impl VariableDeclaration {
     }
 }
 
-impl Parse<VariableError> for VariableDeclaration {
-    fn parse(
-        context: &mut ParseContext,
-    ) -> ParseResult<VariableDeclaration, VariableError> {
+impl Parse<VariableError> for Variable {
+    fn parse(context: &mut ParseContext) -> ParseResult<Variable, VariableError> {
         let mutability = Mutability::parse(context)?;
-        let identifier = VariableDeclaration::parse_name(context, &mutability)?;
+        let identifier = Variable::parse_name(context, &mutability)?;
 
         let provided_type = match context.stream.peek_token::<1>()[0] {
             Some(Token::Colon) => {
@@ -75,7 +73,7 @@ impl Parse<VariableError> for VariableDeclaration {
             }
         };
 
-        Ok(VariableDeclaration {
+        Ok(Variable {
             mutability,
             identifier,
             provided_type,
@@ -100,9 +98,7 @@ impl Mutability {
 }
 
 impl Parse<VariableError> for Mutability {
-    fn parse(
-        parser: &mut ParseContext,
-    ) -> ParseResult<Mutability, VariableError> {
+    fn parse(parser: &mut ParseContext) -> ParseResult<Mutability, VariableError> {
         let mutability = match &parser.stream.peek::<1>()[0] {
             Some((Token::KeyLet, _)) => Ok(Mutability::Immutable),
             Some((Token::KeyVar, _)) => Ok(Mutability::Mutable),
@@ -141,9 +137,9 @@ pub enum VariableError {
 mod tests {
     use itertools::Itertools;
 
-    use crate::parser::{Parser, error::ParseError};
+    use crate::parser::{error::ParseError, Parser};
 
-    use super::VariableDeclaration;
+    use super::Variable;
 
     #[test]
     fn test_var() {
@@ -180,23 +176,22 @@ mod tests {
                                     let statement = statement + semicolon;
 
                                     let mut parser = Parser::new(false);
-                                    let (_, result) = parser.parse_file::<VariableDeclaration, _, _>("", &*statement);
-                                    
+                                    let (_, result) =
+                                        parser.parse_file::<Variable, _, _>("", &*statement);
+
                                     match result {
                                         Ok(_decl) => {
                                             // println!("👍 {statement}");
                                             // println!("{decl:#?}")
-                                        },
-                                        Err(parse_error) => {
-                                            match parse_error {
-                                                ParseError::Spanned(Some(error), _) => match error {
-                                                    super::VariableError::MissingName => {
-                                                        println!("Missing name in {statement:?}");
-                                                    },
-                                                    _ => {}
-                                                },
+                                        }
+                                        Err(parse_error) => match parse_error {
+                                            ParseError::Spanned(Some(error), _) => match error {
+                                                super::VariableError::MissingName => {
+                                                    println!("Missing name in {statement:?}");
+                                                }
                                                 _ => {}
-                                            }
+                                            },
+                                            _ => {}
                                         },
                                     }
                                 }
