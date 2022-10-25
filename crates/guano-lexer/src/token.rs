@@ -17,13 +17,37 @@ pub enum Token {
     #[token("var")]
     KeyVar,
 
-    /// Nil value
-    #[token("nil")]
-    KeyNil,
+    /// For keyword
+    #[token("for")]
+    KeyFor,
+
+    /// While keyword
+    #[token("while")]
+    KeyWhile,
+
+    /// In keyword
+    #[token("in")]
+    KeyIn,
+
+    /// Break keyword
+    #[token("break")]
+    KeyBreak,
+
+    /// Continue keyword
+    #[token("continue")]
+    KeyContinue,
+
+    /// If keyword
+    #[token("if")]
+    KeyIf,
+
+    /// Else keyword
+    #[token("else")]
+    KeyElse,
 
     /// Return keyword
-    #[token("ret")]
-    KeyRet,
+    #[token("return")]
+    KeyReturn,
 
     /// Type cast keyword
     #[token("as")]
@@ -35,8 +59,8 @@ pub enum Token {
     PrimStr,
 
     /// Char type
-    #[token("char")]
-    PrimChar,
+    #[token("character")]
+    PrimCharacter,
 
     /// Unsigned integer type
     /*     #[regex(r"u(\d+|size)", bitsize)]
@@ -90,9 +114,13 @@ pub enum Token {
     #[regex(r"0[bB][01][_01]*", remove_first_two)]
     LitBin(String),
 
-    /// Boolean Literal
+    /// Boolean literal
     #[regex(r"false|true", |lex| if lex.slice() == "true" {true} else {false})]
     LitBool(bool),
+
+    /// Nil literal
+    #[token("nil")]
+    LitNil,
 
     // General
     /// Whitespace
@@ -224,11 +252,17 @@ impl std::fmt::Display for Token {
             Token::KeyFun => "Function Keyword",
             Token::KeyLet => "Let Keyword",
             Token::KeyVar => "Var Keyword",
-            Token::KeyRet => "Return Keyword",
-            Token::KeyAs => "Type Cast Keyword",
-            Token::KeyNil => "Nil Keyword",
+            Token::KeyReturn => "Return Keyword",
+            Token::KeyAs => "As Keyword",
+            Token::KeyFor => "For Keyword",
+            Token::KeyIn => "In Keyword",
+            Token::KeyBreak => "Break Keyword",
+            Token::KeyContinue => "Continue Keyword",
+            Token::KeyWhile => "While Keyword",
+            Token::KeyIf => "If Keyword",
+            Token::KeyElse => "Else Keyword",
             Token::PrimStr => "String Type",
-            Token::PrimChar => "Char Type",
+            Token::PrimCharacter => "Character Type",
             Token::PrimBool => "Bool Type",
             /*             Token::PrimUnsignedInteger(b) => todo!(),
             Token::PrimInteger(_) => todo!(),
@@ -243,6 +277,7 @@ impl std::fmt::Display for Token {
             Token::LitHex(_) => "Hexadecimal Literal",
             Token::LitBin(_) => "Binary Literal",
             Token::LitBool(_) => "Boolean Literal",
+            Token::LitNil => "Nil Literal",
             Token::Whitespace => "Whitespace",
             Token::Identifier(_) => "Identifier",
             Token::CommSingle(_) => "Monoline Comment",

@@ -115,7 +115,7 @@ impl Token {
                         newlines.push(Some(index));
                     }
                 }
-                
+
                 count
             },
             _ => 0

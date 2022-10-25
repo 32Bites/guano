@@ -1,4 +1,4 @@
-pub mod function;
+pub mod block;
 mod statement;
 pub mod variable;
 

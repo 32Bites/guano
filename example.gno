@@ -25,6 +25,6 @@ fun personPrint @ age: float, name: string {
 }
 
 ## Add two values
-fun add: f32 @ first: float, second: uint {
-    ret first + second as float;
+fun add: float @ first: float, second: uint {
+    return first + second as float;
 }

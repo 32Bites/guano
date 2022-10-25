@@ -1,12 +1,14 @@
-use std::mem;
+use std::{mem, ops::Range};
 
 use convert_case::{Boundary, Case, Casing, StateConverter};
 use guano_lexer::{Span, Token};
-use thiserror::Error;
 
-use crate::convert_result_impl;
+use crate::empty_error;
 
-use super::{Parse, Parser};
+use super::{
+    error::{EmptyError, ParseError, ParseResult, ToParseError},
+    Parse, ParseContext, TokenStream,
+};
 
 fn identify_casing(string: &str) -> Option<Case> {
     for case in Case::deterministic_cases() {
@@ -88,21 +90,36 @@ impl Casing<String> for Identifier {
     }
 }
 
-impl<I: Iterator<Item = (Token, Span)>> Parse<I, IdentifierError> for Identifier {
-    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<IdentifierError>> {
-        if let Some(Token::Identifier(identifier)) = &parser.peek_token::<1>()[0] {
-            let result = identifier.into();
-            parser.read_token::<1>();
-
-            Ok(result)
-        } else {
-            parser.reset_peek();
-            Err(None)
+impl Parse<IdentifierError> for Identifier {
+    fn parse(
+        parser: &mut ParseContext,
+    ) -> ParseResult<Identifier, IdentifierError> {
+        match &parser.stream.read::<1>()[0] {
+            Some((Token::Identifier(identifier), _)) => Ok(identifier.into()),
+            Some((_, span)) => Err(ParseError::unexpected_token(span.clone())),
+            None => Err(ParseError::EndOfFile),
         }
     }
 }
 
-#[derive(Debug, Error)]
-pub enum IdentifierError {}
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.value.fmt(f)
+    }
+}
 
-convert_result_impl!(IdentifierError);
+impl PartialEq for Identifier {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl Eq for Identifier {}
+
+impl std::hash::Hash for Identifier {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+    }
+}
+
+empty_error!(IdentifierError);

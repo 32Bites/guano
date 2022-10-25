@@ -1,18 +1,90 @@
-use guano_lexer::{Span, Token};
+use std::ops::Range;
+
+use guano_lexer::Token;
 use thiserror::Error;
 
-use crate::{
-    convert_result_impl,
-    parser::{
-        expression::{
-            literal::Literal,
-            Expression, ExpressionError,
-        },
-        identifier::{Identifier, IdentifierError},
-        typing::{Type, TypeError},
-        ConvertResult, Parse, Parser,
-    },
+use crate::parser::{
+    error::{EmptyError, ParseError, ParseResult, ToParseError, ToParseResult},
+    expression::{Expression, ExpressionError},
+    identifier::{Identifier, IdentifierError},
+    typing::{Type, TypeError},
+    Parse, ParseContext, TokenStream,
 };
+
+#[derive(Debug, Clone)]
+pub struct VariableDeclaration {
+    pub mutability: Mutability,
+    pub identifier: Identifier,
+    pub provided_type: Option<Type>,
+    pub value: Option<Expression>,
+}
+
+impl VariableDeclaration {
+    fn parse_name(
+        context: &mut ParseContext,
+        mutability: &Mutability,
+    ) -> ParseResult<Identifier, VariableError> {
+        match &context.stream.peek::<1>()[0] {
+            Some((Token::Identifier(_), _)) => Identifier::parse(context).to_parse_result(),
+            Some((_, span)) => {
+                context.stream.reset_peek();
+                let mut test_context = context.prepend(
+                    [
+                        (mutability.token(), None),
+                        (Token::Identifier("TEST".into()), None),
+                    ]
+                ).ok_or(ParseError::unexpected_token(span.clone()))?;
+
+                match VariableDeclaration::parse(&mut test_context) {
+                    Ok(_) => Err(VariableError::MissingName.to_parse_error(span.clone())),
+                    Err(_) => Err(ParseError::unexpected_token(span.clone())),
+                }
+            }
+
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+}
+
+impl Parse<VariableError> for VariableDeclaration {
+    fn parse(
+        context: &mut ParseContext,
+    ) -> ParseResult<VariableDeclaration, VariableError> {
+        let mutability = Mutability::parse(context)?;
+        let identifier = VariableDeclaration::parse_name(context, &mutability)?;
+
+        let provided_type = match context.stream.peek_token::<1>()[0] {
+            Some(Token::Colon) => {
+                context.stream.read::<1>();
+                Some(Type::parse(context).to_parse_result()?)
+            }
+            _ => {
+                context.stream.reset_peek();
+                None
+            }
+        };
+
+        let value = match context.stream.peek_token::<1>()[0] {
+            Some(Token::Equals) => {
+                context.stream.read::<1>();
+
+                Some(Expression::parse(context).to_parse_result()?)
+            }
+
+            _ => {
+                context.stream.reset_peek();
+                None
+            }
+        };
+
+        Ok(VariableDeclaration {
+            mutability,
+            identifier,
+            provided_type,
+            value,
+        })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Mutability {
@@ -20,112 +92,67 @@ pub enum Mutability {
     Immutable,
 }
 
-impl<I: Iterator<Item = (Token, Span)>> Parse<I, VariableError> for Mutability {
-    fn parse(parser: &mut Parser<I>) -> Result<Self, Option<VariableError>> {
-        let mutability =
-            if let Some(token @ (Token::KeyLet | Token::KeyVar)) = &parser.peek_token::<1>()[0] {
-                match token {
-                    Token::KeyLet => Mutability::Immutable,
-                    Token::KeyVar => Mutability::Mutable,
-                    _ => unreachable!(),
-                }
-            } else {
-                parser.reset_peek();
-                return Err(None);
-            };
-
-        parser.read::<1>();
-
-        Ok(mutability)
+impl Mutability {
+    fn token(&self) -> Token {
+        match self {
+            Mutability::Mutable => Token::KeyVar,
+            Mutability::Immutable => Token::KeyLet,
+        }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Variable {
-    pub identifier: Identifier,
-    pub mutability: Mutability,
-    pub value_type: Option<Type>,
-    pub value: Expression,
-}
+impl Parse<VariableError> for Mutability {
+    fn parse(
+        parser: &mut ParseContext,
+    ) -> ParseResult<Mutability, VariableError> {
+        let mutability = match &parser.stream.peek::<1>()[0] {
+            Some((Token::KeyLet, _)) => Ok(Mutability::Immutable),
+            Some((Token::KeyVar, _)) => Ok(Mutability::Mutable),
+            t => {
+                parser.stream.reset_peek();
 
-impl<I: Iterator<Item = (Token, Span)>> Parse<I, VariableError> for Variable {
-    fn parse(parser: &mut Parser<I>) -> Result<Variable, Option<VariableError>> {
-        let mutability = Mutability::parse(parser)?;
-        let identifier = Identifier::parse(parser).convert_result()?;
-
-        let mut value_type = if let Some(Token::Colon) = parser.peek_token::<1>()[0] {
-            parser.read::<1>();
-
-            Some(Type::parse(parser).convert_result()?)
-        } else {
-            parser.reset_peek();
-            None
-        };
-
-        let value = if let Some(Token::Equals) = parser.peek_token::<1>()[0] {
-            parser.read::<1>();
-            Expression::parse(parser).convert_result()?
-        } else {
-            parser.reset_peek();
-            Literal::Nil.to_expression()
-        };
-
-        if let Some(value_type) = &value_type {
-            if let Some(actual_type) = value.get_type() {
-                if value_type.clone() != actual_type {
-                    return Err(Some(VariableError::TypeMismatch));
-                }
+                return match t {
+                    Some((_, s)) => Err(VariableError::InvalidMutability.to_parse_error(s.clone())),
+                    None => Err(ParseError::EndOfFile),
+                };
             }
-        } else {
-            value_type = value.get_type()
-        }
+        };
+        parser.stream.read::<1>();
 
-        if let Some(Token::Semicolon) = parser.peek_token::<1>()[0] {
-            parser.read::<1>();
-            
-            Ok(Variable {
-                identifier,
-                mutability,
-                value_type,
-                value,
-            })
-        } else {
-            parser.reset_peek();
-            Err(Some(VariableError::ExpectedSemicolon))
-        }
+        mutability
     }
 }
 
 #[derive(Debug, Error)]
 pub enum VariableError {
+    #[error("missing variable name")]
+    MissingName,
     #[error("{0}")]
     InvalidType(#[from] TypeError),
     #[error("{0}")]
     InvalidExpression(#[from] ExpressionError),
     #[error("{0}")]
     InvalidIdentifier(#[from] IdentifierError),
-    #[error("value type of expression does not match the specified type")]
-    TypeMismatch,
-    #[error("no deliminating semicolon was found")]
-    ExpectedSemicolon,
+    /*     #[error("value type of expression does not match the specified type")]
+    TypeMismatch, */
+    #[error("variable statements must start with `var` or `let`")]
+    InvalidMutability,
 }
-
-convert_result_impl!(VariableError);
 
 #[cfg(test)]
 mod tests {
     use itertools::Itertools;
 
-    use crate::parser::{Parse, Parser};
+    use crate::parser::{statement::Statement, Parse, Parser, ParseContext, error::ParseError};
 
-    use super::Variable;
+    use super::VariableDeclaration;
 
     #[test]
     fn test_var() {
         let mutabilities = ["", "var", "let"];
         let names = ["", "variable", "name", "ree"];
         let colons = ["", ":"];
-        let type_names = ["", "uint", "int", "string", "float", "char"];
+        let type_names = ["", "uint", "int", "string", "float", "character"];
         let equals = ["", "="];
         let values = [
             "",
@@ -147,20 +174,32 @@ mod tests {
                         for equal in equals {
                             for value in values {
                                 for semicolon in semicolons {
-                                    let start = [mutability, name, colon, type_name, equal, value]
-                                        .iter()
-                                        .filter(|s| !s.is_empty())
-                                        .join(" ");
-                                    let statement = format!("{start}{semicolon}");
+                                    let statement =
+                                        [mutability, name, colon, type_name, equal, value]
+                                            .iter()
+                                            .filter(|s| !s.is_empty())
+                                            .join(" ");
+                                    let statement = statement + semicolon;
 
-                                    let mut parser =
-                                        <Parser>::from_source(statement.as_str(), true);
-
-                                    if let Ok(variable) = Variable::parse(&mut parser) {
-                                        println!("Success: {statement}");
-                                        println!("Value: {variable:#?}");
-                                    } else {
-                                        //println!("Failure: {statement}");
+                                    let mut parser = Parser::new(false);
+                                    let (_, result) = parser.parse_file::<VariableDeclaration, _, _>("", &*statement);
+                                    
+                                    match result {
+                                        Ok(decl) => {
+                                            // println!("👍 {statement}");
+                                            // println!("{decl:#?}")
+                                        },
+                                        Err(parse_error) => {
+                                            match parse_error {
+                                                ParseError::Spanned(Some(error), _) => match error {
+                                                    super::VariableError::MissingName => {
+                                                        println!("Missing name in {statement:?}");
+                                                    },
+                                                    _ => {}
+                                                },
+                                                _ => {}
+                                            }
+                                        },
                                     }
                                 }
                             }

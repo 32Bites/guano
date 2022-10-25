@@ -1,16 +1,17 @@
-use std::{cmp::Ordering, str::FromStr};
+use std::{cmp::Ordering, ops::Range, str::FromStr};
 
 use bigdecimal::{
-    num_bigint::{ParseBigIntError, ToBigInt},
+    num_bigint::{ParseBigIntError, Sign, ToBigInt},
     BigDecimal, ParseBigDecimalError, ToPrimitive, Zero,
 };
 use guano_lexer::{escape_char::Token as EscapeToken, logos::Logos, Span, Token};
 use num::BigInt;
 use thiserror::Error;
 
-use crate::{
-    convert_result_impl,
-    parser::{typing::Type, ConvertResult, Parse},
+use crate::parser::{
+    error::{ParseError, ParseResult, ToParseError},
+    typing::Type,
+    Parse, ParseContext,
 };
 
 use super::parser::Expression;
@@ -41,18 +42,6 @@ impl std::fmt::Display for Literal {
 impl Literal {
     pub fn to_expression(self) -> Expression {
         Expression::Literal(self)
-    }
-
-    pub fn get_type(&self) -> Option<Type> {
-        Some(match self {
-            Literal::String(_) => Type::String,
-            Literal::Character(_) => Type::Character,
-            //Literal::Integer(_) => Type::Integer,
-            // Literal::UnsignedInteger(_) => Type::UnsignedInteger,
-            Literal::FloatingPoint(_) => Type::FloatingPoint,
-            Literal::Boolean(_) => Type::Boolean,
-            Literal::Nil | Literal::Integer(_) => return None,
-        })
     }
 
     pub fn bs_left(&self, rhs: &Self) -> Option<Self> {
@@ -112,14 +101,14 @@ impl Literal {
     pub fn l_and(&self, rhs: &Self) -> Option<Self> {
         Some(match (self, rhs) {
             (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(*lhs && *rhs),
-            _ => return None
+            _ => return None,
         })
     }
 
     pub fn l_or(&self, rhs: &Self) -> Option<Self> {
         Some(match (self, rhs) {
             (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(*lhs || *rhs),
-            _ => return None
+            _ => return None,
         })
     }
 
@@ -251,88 +240,83 @@ impl Literal {
                 Literal::Integer(i) => Some(Literal::FloatingPoint(i.clone().into())),
                 _ => None,
             },
-            Type::Custom(_) | Type::Slice(_) => None,
+            Type::Custom(_) | Type::List(_) => None,
         }
     }
 }
 
-impl<I: Iterator<Item = (Token, Span)>> Parse<I, LiteralError> for Literal {
-    fn parse(parser: &mut crate::parser::Parser<I>) -> Result<Self, Option<LiteralError>> {
-        let literal = match parser.peek_token::<1>() {
-            [Some(Token::LitString(string))] => {
-                let mut parsed_string = "".to_string();
+impl Parse<LiteralError> for Literal {
+    fn parse(
+        context: &mut ParseContext,
+    ) -> ParseResult<Literal, LiteralError> {
+        let literal = match &context.stream.read::<1>()[0] {
+            Some((token, span)) => match token {
+                Token::LitString(string) => {
+                    let mut parsed_string = "".to_string();
 
-                for string_item in EscapeToken::lexer(&string) {
-                    if let Some(character) = string_item.char() {
-                        parsed_string.push(character)
-                    } else {
-                        parser.reset_peek();
-                        return LiteralError::InvalidString.convert_result();
-                    }
-                }
-
-                Literal::String(parsed_string)
-            }
-
-            [Some(Token::LitChar(character))] => {
-                if character.len() == 0 {
-                    parser.reset_peek();
-                    return LiteralError::EmptyCharacterLiteral.convert_result();
-                } else {
-                    let mut escaper = EscapeToken::lexer(&character);
-
-                    match (escaper.next(), escaper.next()) {
-                        (None, None) | (Some(_), Some(_)) => {
-                            parser.reset_peek();
-                            return LiteralError::InvalidCharacter.convert_result();
+                    for string_item in EscapeToken::lexer(&string) {
+                        if let Some(character) = string_item.char() {
+                            parsed_string.push(character)
+                        } else {
+                            return Err(LiteralError::InvalidString.to_parse_error(span.clone()));
                         }
-                        (Some(token), None) => match token.char() {
-                            Some(character) => Literal::Character(character),
-                            None => {
-                                parser.reset_peek();
-                                return LiteralError::InvalidCharacter.convert_result();
+                    }
+    
+                    Literal::String(parsed_string)
+                }
+
+                Token::LitChar(character) => {
+                    if character.len() == 0 {
+                        return Err(LiteralError::EmptyCharacterLiteral.to_parse_error(span.clone()));
+                    } else {
+                        let mut escaper = EscapeToken::lexer(&character);
+    
+                        match (escaper.next(), escaper.next()) {
+                            (None, None) | (Some(_), Some(_)) => {
+                                return Err(LiteralError::InvalidCharacter.to_parse_error(span.clone()));
                             }
-                        },
-                        (None, Some(_)) => unreachable!(),
+                            (Some(token), None) => match token.char() {
+                                Some(character) => Literal::Character(character),
+                                None => {
+                                    return Err(LiteralError::InvalidCharacter.to_parse_error(span.clone()));
+                                }
+                            },
+                            (None, Some(_)) => unreachable!(),
+                        }
                     }
                 }
-            }
 
-            [Some(Token::LitInteger(integer))] => {
-                let decimal_string: String = integer.chars().filter(|c| *c != '_').collect();
-                let integer = match BigInt::from_str(&decimal_string) {
-                    Ok(i) => i,
-                    Err(e) => {
-                        parser.reset_peek();
-                        return e.convert_result();
-                    }
-                };
-                Literal::Integer(integer)
-            }
+                Token::LitInteger(integer) => {
+                    let decimal_string: String = integer.chars().filter(|c| *c != '_').collect();
+                    let integer = match BigInt::from_str(&decimal_string) {
+                        Ok(i) => i,
+                        Err(e) => {
+                            return Err(e.to_parse_error(span.clone()).convert());
+                        }
+                    };
+                    Literal::Integer(integer)
+                }
 
-            [Some(Token::LitBool(boolean))] => Literal::Boolean(boolean),
+                Token::LitBool(boolean) => Literal::Boolean(*boolean),
 
-            [Some(Token::LitFloat(float))] => {
-                let float_string: String = float.chars().filter(|c| *c != '_').collect();
-                let float = match BigDecimal::from_str(&float_string) {
-                    Ok(f) => f,
-                    Err(e) => {
-                        parser.reset_peek();
-                        return e.convert_result();
-                    }
-                };
-                Literal::FloatingPoint(float)
-            }
-
-            [Some(Token::KeyNil)] => Literal::Nil,
-
-            _ => {
-                parser.reset_peek();
-                return Err(None);
-            }
+                Token::LitFloat(float) => {
+                    let float_string: String = float.chars().filter(|c| *c != '_').collect();
+                    let float = match BigDecimal::from_str(&float_string) {
+                        Ok(f) => f,
+                        Err(e) => {
+                            return Err(e.to_parse_error(span.clone()).convert());
+                        }
+                    };
+                    Literal::FloatingPoint(float)
+                }
+    
+                Token::LitNil => Literal::Nil,
+                _ => {
+                    return Err(ParseError::unexpected_token(span.clone()));
+                }
+            },
+            None => return Err(ParseError::EndOfFile),
         };
-
-        parser.read::<1>();
 
         Ok(literal)
     }
@@ -350,6 +334,6 @@ pub enum LiteralError {
     InvalidInteger(#[from] ParseBigIntError),
     #[error("invalid floating point literal")]
     InvalidFloat(#[from] ParseBigDecimalError),
+    #[error("not a literal")]
+    InvalidLiteral,
 }
-
-convert_result_impl!(LiteralError);

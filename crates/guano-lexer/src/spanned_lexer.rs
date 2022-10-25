@@ -1,6 +1,6 @@
-use std::ops::RangeInclusive;
+use std::{ops::RangeInclusive, vec::IntoIter};
 
-use logos::{Lexer, Logos, Source, Span as ByteSpan};
+use logos::{Lexer, Logos, Source, Span as ByteSpan, SpannedIter};
 
 use crate::token::Token;
 
@@ -13,9 +13,42 @@ use crate::token::Token;
 */
 
 #[derive(Debug, Clone)]
+pub struct NewSpannedLexer<Token>(IntoIter<(Token, Option<ByteSpan>)>);
+
+impl NewSpannedLexer<Token> {
+    pub fn new(lexer: Lexer<'_, Token>) -> Self {
+        Self(
+            lexer
+                .spanned()
+                .filter(|(t, _)| !matches!(t, Token::CommMulti(_) | Token::CommSingle(_)))
+                .map(|(t, r)| (t, Some(r)))
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
+    }
+}
+
+impl<'source, Token: Logos<'source>> Iterator for NewSpannedLexer<Token> {
+    type Item = (Token, Option<ByteSpan>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Span {
     pub byte_span: ByteSpan,
     pub line_span: LineSpan,
+}
+
+impl Span {
+    pub fn extend(&self, other: &Span) -> Span {
+        Span {
+            byte_span: self.byte_span.start..other.byte_span.end,
+            line_span: self.line_span.extend(&other.line_span),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -23,6 +56,16 @@ pub struct LineSpan {
     pub lines: RangeInclusive<usize>,
     pub start_line_column: usize,
     pub end_line_column: usize,
+}
+
+impl LineSpan {
+    pub fn extend(&self, other: &LineSpan) -> LineSpan {
+        LineSpan {
+            lines: *self.lines.start()..=*other.lines.end(),
+            start_line_column: self.start_line_column,
+            end_line_column: other.end_line_column,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

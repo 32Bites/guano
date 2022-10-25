@@ -1,9 +1,14 @@
+use std::{collections::HashSet, marker::PhantomData, ops::Range};
+
 use guano_lexer::{Span, Token};
 use thiserror::Error;
 
-use super::{Parse, Parser};
+use super::{
+    error::{ParseError, ParseResult, ToParseError, ToParseResult},
+    Parse, ParseContext, TokenStream,
+};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     String,
     Character,
@@ -12,43 +17,68 @@ pub enum Type {
     Boolean,
     FloatingPoint,
     Custom(String),
-    Slice(Box<Type>),
+    List(Box<Type>),
 }
 
-impl<I: Iterator<Item = (Token, Span)>> Parse<I, TypeError> for Type {
-    fn parse(parser: &mut Parser<I>) -> Result<Type, Option<TypeError>> {
-        if let Some((token, _)) = parser.lexer.peek() {
-            let output = match token {
-                Token::PrimStr => Type::String,
-                Token::PrimChar => Type::Character,
-                Token::PrimUnsignedInteger => Type::UnsignedInteger,
-                Token::PrimInteger => Type::Integer,
-                Token::PrimFloat => Type::FloatingPoint,
-                Token::PrimBool => Type::Boolean,
-                // Token::Identifier(i) => Type::Custom(i.clone()),
+impl Parse<TypeError> for Type {
+    fn parse(
+        context: &mut ParseContext,
+    ) -> ParseResult<Type, TypeError> {
+        match &context.stream.peek::<1>()[0] {
+            Some((token, span)) => match token {
+                Token::PrimStr
+                | Token::PrimCharacter
+                | Token::PrimUnsignedInteger
+                | Token::PrimInteger
+                | Token::PrimFloat
+                | Token::PrimBool => Type::parse_primitive(context),
+                Token::OpenBracket => Type::parse_list(context),
                 Token::Identifier(_) => {
-                    parser.reset_peek();
-                    return Err(Some(TypeError::CustomTypingNotAvailable));
-                }
-                Token::OpenBracket => {
-                    parser.lexer.next();
-                    if let Some((Token::CloseBracket, _)) = parser.lexer.next() {
-                        let sub_type = Type::parse(parser)?;
-                        return Ok(Type::Slice(Box::new(sub_type)));
-                    } else {
-                        return Err(None);
-                    }
+                    context.stream.reset_peek();
+                    Err(TypeError::CustomTypingNotAvailable.to_parse_error(span.clone()))
                 }
                 _ => {
-                    parser.reset_peek();
-                    return Err(None);
+                    context.stream.reset_peek();
+                    Err(ParseError::unexpected_token(span.clone()))
                 }
-            };
-            parser.lexer.next();
-            Ok(output)
-        } else {
-            parser.reset_peek();
-            Err(None)
+            },
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+}
+
+impl Type {
+    fn parse_primitive(context: &mut ParseContext) -> ParseResult<Type, TypeError>
+    {
+        match &context.stream.read::<1>()[0] {
+            Some((token, span)) => match token {
+                Token::PrimStr => Ok(Type::String),
+                Token::PrimCharacter => Ok(Type::Character),
+                Token::PrimUnsignedInteger => Ok(Type::UnsignedInteger),
+                Token::PrimInteger => Ok(Type::Integer),
+                Token::PrimFloat => Ok(Type::FloatingPoint),
+                Token::PrimBool => Ok(Type::Boolean),
+                _ => Err(ParseError::unexpected_token(span.clone())),
+            },
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    fn parse_list(context: &mut ParseContext) -> ParseResult<Type, TypeError>
+    {
+        match &context.stream.read::<2>() {
+            [Some((token, span)), Some((second_token, second_span))] => match token {
+                Token::OpenBrace => match second_token {
+                    Token::CloseBrace => {
+                        let sub_type = Box::new(Type::parse(context)?);
+                        Ok(Type::List(sub_type))
+                    }
+                    _ => Err(ParseError::unexpected_token(second_span.clone())),
+                },
+                _ => Err(ParseError::unexpected_token(span.clone())),
+            },
+
+            _ => Err(ParseError::EndOfFile),
         }
     }
 }
@@ -62,14 +92,18 @@ impl std::fmt::Display for Type {
             Type::UnsignedInteger => "uint",
             Type::Boolean => "boolean",
             Type::FloatingPoint => "float",
-            Type::Slice(t) => return write!(f, "[]{t}"),
+            Type::List(t) => return write!(f, "[]{t}"),
             Type::Custom(c) => return write!(f, "{c}"),
         })
     }
 }
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Error)]
 pub enum TypeError {
     #[error("custom types not implemented as of yet")]
     CustomTypingNotAvailable,
+    #[error("a second closing bracket is expected for list types `[]`")]
+    MissingClosingBracket,
+    #[error("unexpected start to type")]
+    UnexpectedStart,
 }
