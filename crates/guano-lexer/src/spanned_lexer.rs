@@ -5,9 +5,9 @@ use logos::{Lexer, Logos, Span as ByteSpan};
 use crate::token::Token;
 
 #[derive(Debug, Clone)]
-pub struct NewSpannedLexer<Token>(IntoIter<(Token, Option<ByteSpan>)>);
+pub struct SpannedLexer<Token>(IntoIter<(Token, Option<ByteSpan>)>);
 
-impl NewSpannedLexer<Token> {
+impl SpannedLexer<Token> {
     pub fn new(lexer: Lexer<'_, Token>) -> Self {
         Self(
             lexer
@@ -20,7 +20,7 @@ impl NewSpannedLexer<Token> {
     }
 }
 
-impl<'source, Token: Logos<'source>> Iterator for NewSpannedLexer<Token> {
+impl<'source, Token: Logos<'source>> Iterator for SpannedLexer<Token> {
     type Item = (Token, Option<ByteSpan>);
 
     fn next(&mut self) -> Option<Self::Item> {

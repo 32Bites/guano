@@ -4,7 +4,7 @@ use std::{
     vec::IntoIter,
 };
 
-use guano_lexer::{logos::Logos, NewSpannedLexer, Token};
+use guano_lexer::{logos::Logos, SpannedLexer, Token};
 use itertools::{Itertools, MultiPeek};
 
 use super::{
@@ -184,7 +184,7 @@ impl Parser {
         let source: Arc<str> = source.into();
         let file_id = self.add_file(file_name, source.clone());
 
-        let token_stream = NewSpannedLexer::new(Token::lexer(&source)).into();
+        let token_stream = SpannedLexer::new(Token::lexer(&source)).into();
 
         let mut context =
             ParseContext::from_stream(file_id, token_stream, self.simplified_expressions, 0, 100);
