@@ -145,10 +145,6 @@ pub enum Token {
     #[token("{")]
     OpenBrace,
 
-    /// Newline
-    #[token("\n")]
-    Newline,
-
     /// }
     #[token("}")]
     CloseBrace,
@@ -283,7 +279,6 @@ impl std::fmt::Display for Token {
             Token::CommSingle(_) => "Monoline Comment",
             Token::CommMulti(_) => "Multiline Comment",
             Token::OpenBrace => "Opening Brace",
-            Token::Newline => "Newline",
             Token::CloseBrace => "Closing Brace",
             Token::OpenBracket => "Opening Bracket",
             Token::CloseBracket => "Closing Bracket",

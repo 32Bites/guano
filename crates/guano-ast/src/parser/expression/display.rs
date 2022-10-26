@@ -1,4 +1,5 @@
-use super::{parser::Expression, BinaryExpression};
+use super::{parser::Expression, BinaryExpression, FunctionCall};
+use itertools::Itertools;
 
 #[derive(Debug)]
 pub struct Display<'expression> {
@@ -28,25 +29,56 @@ impl std::fmt::Display for Display<'_> {
             Expression::Group(g) => write!(f, "( {} )", self.sub(g))?,
             Expression::Literal(l) => write!(f, "{l}")?,
             Expression::Variable(v) => write!(f, "{v}")?,
+            Expression::FunctionCall(FunctionCall {
+                identifier,
+                arguments,
+            }) => write!(
+                f,
+                "{identifier}({})",
+                arguments.iter().map(|e| self.sub(e).to_string()).join(", ")
+            )?,
+            Expression::Index { value, index } => {
+                write!(f, "{}[{}]", self.sub(value), self.sub(index))?
+            }
+            Expression::Property { value, property } => {
+                write!(f, "{}.{property}", self.sub(value))?
+            }
+            Expression::MethodCall { value, method } => write!(
+                f,
+                "{}.{}({})",
+                self.sub(value),
+                method.identifier,
+                method
+                    .arguments
+                    .iter()
+                    .map(|e| self.sub(e).to_string())
+                    .join(", ")
+            )?,
             Expression::Unary { operator, right } => write!(f, "{operator}{}", self.sub(right))?,
+            Expression::Tuple(values) => write!(f, "({})", {
+                match values.len() {
+                    0 => "".to_string(),
+                    1 => format!("{},", self.sub(&values[0])),
+                    _ => values.iter().map(|e| self.sub(e).to_string()).join(", "),
+                }
+            })?,
+            Expression::List(values) => write!(
+                f,
+                "[{}]",
+                values.iter().map(|e| self.sub(e).to_string()).join(", ")
+            )?,
             e => {
                 if self.grouped {
                     f.write_str("( ")?;
                 }
 
                 match e {
-                    Expression::Cast { left, cast_to } => {
+                    Expression::Cast {
+                        value: left,
+                        new_type: cast_to,
+                    } => {
                         write!(f, "{} as {cast_to}", self.sub(left))
                     }
-                    /*                     Expression::FunctionCall { name, arguments } => todo!(),
-                    Expression::Format {
-                        format_string,
-                        arguments,
-                    } => todo!(),
-                    Expression::Access {
-                        owner,
-                        accessed_value,
-                    } => todo!(), */
                     Expression::Factor(BinaryExpression {
                         left,
                         operator,
@@ -72,6 +104,9 @@ impl std::fmt::Display for Display<'_> {
                         operator,
                         right,
                     }) => write!(f, "{} {operator} {}", self.sub(left), self.sub(right)),
+                    Expression::Format { format, with } => {
+                        write!(f, "{format:?}: {}", self.sub(with))
+                    }
                     _ => unreachable!(),
                 }?;
 

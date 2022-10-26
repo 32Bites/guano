@@ -17,6 +17,25 @@ pub struct Variable {
     pub value: Option<Expression>,
 }
 
+impl std::fmt::Display for Variable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let type_string = self
+            .provided_type
+            .as_ref()
+            .map_or("".to_string(), |t| format!(": {t}"));
+        let value_string = self
+            .value
+            .as_ref()
+            .map_or("".to_string(), |v| format!(" = {v}"));
+
+        write!(
+            f,
+            "{} {}{type_string}{value_string}",
+            self.mutability, self.identifier
+        )
+    }
+}
+
 impl Variable {
     fn parse_name(
         context: &mut ParseContext,
@@ -88,6 +107,15 @@ pub enum Mutability {
     Immutable,
 }
 
+impl std::fmt::Display for Mutability {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Mutability::Mutable => "var",
+            Mutability::Immutable => "let",
+        })
+    }
+}
+
 impl Mutability {
     fn token(&self) -> Token {
         match self {
@@ -99,21 +127,12 @@ impl Mutability {
 
 impl Parse<VariableError> for Mutability {
     fn parse(parser: &mut ParseContext) -> ParseResult<Mutability, VariableError> {
-        let mutability = match &parser.stream.peek::<1>()[0] {
+        match &parser.stream.read::<1>()[0] {
             Some((Token::KeyLet, _)) => Ok(Mutability::Immutable),
             Some((Token::KeyVar, _)) => Ok(Mutability::Mutable),
-            t => {
-                parser.stream.reset_peek();
-
-                return match t {
-                    Some((_, s)) => Err(VariableError::InvalidMutability.to_parse_error(s.clone())),
-                    None => Err(ParseError::EndOfFile),
-                };
-            }
-        };
-        parser.stream.read::<1>();
-
-        mutability
+            Some((_, span)) => Err(ParseError::unexpected_token(span.clone())),
+            None => Err(ParseError::EndOfFile),
+        }
     }
 }
 
@@ -137,9 +156,7 @@ pub enum VariableError {
 mod tests {
     use itertools::Itertools;
 
-    use crate::parser::{error::ParseError, Parser};
-
-    use super::Variable;
+    use crate::parser::{statement::Statement, Parser};
 
     #[test]
     fn test_var() {
@@ -177,22 +194,14 @@ mod tests {
 
                                     let mut parser = Parser::new(false);
                                     let (_, result) =
-                                        parser.parse_file::<Variable, _, _>("", &*statement);
+                                        parser.parse_file::<Statement, _, _>("", &*statement);
 
                                     match result {
-                                        Ok(_decl) => {
-                                            // println!("👍 {statement}");
-                                            // println!("{decl:#?}")
+                                        Ok(decl) => {
+                                            println!("👍 {statement}");
+                                            println!("{decl:#?}")
                                         }
-                                        Err(parse_error) => match parse_error {
-                                            ParseError::Spanned(Some(error), _) => match error {
-                                                super::VariableError::MissingName => {
-                                                    println!("Missing name in {statement:?}");
-                                                }
-                                                _ => {}
-                                            },
-                                            _ => {}
-                                        },
+                                        Err(_) => {}
                                     }
                                 }
                             }

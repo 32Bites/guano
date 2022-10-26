@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, path::PathBuf};
 
-use guano_lexer::{logos::Logos, ToSpanned, Token};
+use guano_lexer::{logos::Logos, Token};
 
 pub fn lex_files(files: Option<&Vec<PathBuf>>) {
     let files: Box<dyn Iterator<Item = PathBuf>> = if let Some(files) = files {
@@ -13,7 +13,7 @@ pub fn lex_files(files: Option<&Vec<PathBuf>>) {
         let file = read_to_string(&file_path).unwrap();
 
         println!("Tokens for {}:", file_path.display());
-        for (token, span) in Token::lexer(file.as_str()).to_spanned() {
+        /*         for (token, span) in Token::lexer(file.as_str()).to_spanned() {
             println!(
                 "{}: {:#?} - {}",
                 token,
@@ -23,6 +23,6 @@ pub fn lex_files(files: Option<&Vec<PathBuf>>) {
                     .map_or("No Value".to_string(), |v| format!("{v:#?}"))
             );
             //println!("Span: {:#?}", span);
-        }
+        } */
     }
 }

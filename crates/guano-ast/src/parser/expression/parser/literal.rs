@@ -14,7 +14,7 @@ use crate::parser::{
     Parse, ParseContext,
 };
 
-use super::parser::Expression;
+use super::Expression;
 
 #[derive(Debug, Clone)]
 pub enum Literal {
@@ -32,7 +32,7 @@ impl std::fmt::Display for Literal {
             Literal::String(s) => write!(f, "{s:?}"),
             Literal::Character(c) => write!(f, "{c:?}"),
             Literal::Integer(i) => write!(f, "{i}"),
-            Literal::FloatingPoint(fp) => write!(f, "{fp:?}"),
+            Literal::FloatingPoint(fp) => write!(f, "{fp}"),
             Literal::Boolean(b) => write!(f, "{b:?}"),
             Literal::Nil => f.write_str("nil"),
         }
@@ -108,6 +108,16 @@ impl Literal {
     pub fn l_or(&self, rhs: &Self) -> Option<Self> {
         Some(match (self, rhs) {
             (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(*lhs || *rhs),
+            _ => return None,
+        })
+    }
+
+    pub fn modu(&self, rhs: &Self) -> Option<Self> {
+        Some(match (self, rhs) {
+            (Literal::FloatingPoint(lhs), Literal::FloatingPoint(rhs)) => {
+                Literal::FloatingPoint(lhs % rhs)
+            }
+            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs % rhs),
             _ => return None,
         })
     }
@@ -240,7 +250,7 @@ impl Literal {
                 Literal::Integer(i) => Some(Literal::FloatingPoint(i.clone().into())),
                 _ => None,
             },
-            Type::Custom(_) | Type::List(_) => None,
+            Type::Custom(_) | Type::List(_) | Type::Tuple(_) => None,
         }
     }
 }

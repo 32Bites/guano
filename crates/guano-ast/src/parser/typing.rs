@@ -1,4 +1,5 @@
 use guano_lexer::Token;
+use itertools::Itertools;
 use thiserror::Error;
 
 use super::{
@@ -16,6 +17,7 @@ pub enum Type {
     FloatingPoint,
     Custom(String),
     List(Box<Type>),
+    Tuple(Vec<Type>),
 }
 
 impl Parse<TypeError> for Type {
@@ -29,6 +31,7 @@ impl Parse<TypeError> for Type {
                 | Token::PrimFloat
                 | Token::PrimBool => Type::parse_primitive(context),
                 Token::OpenBracket => Type::parse_list(context),
+                Token::OpenParen => Type::parse_tuple(context),
                 Token::Identifier(_) => {
                     context.stream.reset_peek();
                     Err(TypeError::CustomTypingNotAvailable.to_parse_error(span.clone()))
@@ -62,8 +65,8 @@ impl Type {
     fn parse_list(context: &mut ParseContext) -> ParseResult<Type, TypeError> {
         match &context.stream.read::<2>() {
             [Some((token, span)), Some((second_token, second_span))] => match token {
-                Token::OpenBrace => match second_token {
-                    Token::CloseBrace => {
+                Token::OpenBracket => match second_token {
+                    Token::CloseBracket => {
                         let sub_type = Box::new(Type::parse(context)?);
                         Ok(Type::List(sub_type))
                     }
@@ -73,6 +76,38 @@ impl Type {
             },
 
             _ => Err(ParseError::EndOfFile),
+        }
+    }
+
+    fn parse_tuple(context: &mut ParseContext) -> ParseResult<Type, TypeError> {
+        match &context.stream.read::<1>()[0] {
+            Some((token, span)) => match token {
+                Token::OpenParen => {
+                    let mut types = vec![];
+
+                    if let Some(Token::CloseParen) = context.stream.peek_token::<1>()[0] {
+                        context.stream.read::<1>();
+                    } else {
+                        loop {
+                            context.stream.reset_peek();
+                            types.push(Type::parse(context)?);
+
+                            match &context.stream.read::<1>()[0] {
+                                Some((token, span)) => match token {
+                                    Token::Comma => {}
+                                    Token::CloseParen => break,
+                                    _ => return Err(ParseError::unexpected_token(span.clone())),
+                                },
+                                None => return Err(ParseError::EndOfFile),
+                            }
+                        }
+                    }
+
+                    Ok(Type::Tuple(types))
+                }
+                _ => Err(ParseError::unexpected_token(span.clone())),
+            },
+            None => Err(ParseError::EndOfFile),
         }
     }
 }
@@ -88,6 +123,7 @@ impl std::fmt::Display for Type {
             Type::FloatingPoint => "float",
             Type::List(t) => return write!(f, "[]{t}"),
             Type::Custom(c) => return write!(f, "{c}"),
+            Type::Tuple(v) => return write!(f, "({})", v.iter().map(|t| t.to_string()).join(", ")),
         })
     }
 }

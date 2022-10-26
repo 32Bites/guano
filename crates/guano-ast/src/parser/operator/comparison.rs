@@ -14,16 +14,22 @@ pub enum ComparisonOperator {
     NotEquals,
 }
 
-impl std::fmt::Display for ComparisonOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
+impl AsRef<str> for ComparisonOperator {
+    fn as_ref(&self) -> &str {
+        match self {
             ComparisonOperator::GreaterThan => ">",
             ComparisonOperator::GreaterThanEquals => ">=",
             ComparisonOperator::LessThan => "<",
             ComparisonOperator::LessThanEquals => "<=",
             ComparisonOperator::Equals => "==",
             ComparisonOperator::NotEquals => "!=",
-        })
+        }
+    }
+}
+
+impl std::fmt::Display for ComparisonOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
     }
 }
 

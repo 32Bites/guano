@@ -1,5 +1,4 @@
 pub mod display;
-pub mod literal;
 mod parser;
 mod simplify;
 
@@ -13,7 +12,7 @@ mod tests {
 
     #[test]
     fn test_expression() {
-        let test = "(5 + 6) << 1 >> 2";
+        let test = "(5 + 6) << 1 >> 2 + ree(1)[0][1].ree.ree().mee(1, 2) as []uint + (1, 2) - (1 + 4,) + (1,)";
 
         let mut parser = Parser::new(false);
         let (_, result) = parser.parse_file::<Expression, _, _>("", test);

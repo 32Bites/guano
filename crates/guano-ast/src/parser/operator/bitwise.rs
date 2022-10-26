@@ -13,15 +13,21 @@ pub enum BitwiseOperator {
     And,
 }
 
-impl std::fmt::Display for BitwiseOperator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
+impl AsRef<str> for BitwiseOperator {
+    fn as_ref(&self) -> &str {
+        match self {
             BitwiseOperator::ShiftLeft => "<<",
             BitwiseOperator::ShiftRight => ">>",
             BitwiseOperator::Or => "|",
             BitwiseOperator::Xor => "^",
             BitwiseOperator::And => "&",
-        })
+        }
+    }
+}
+
+impl std::fmt::Display for BitwiseOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
     }
 }
 

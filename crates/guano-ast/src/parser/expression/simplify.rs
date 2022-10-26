@@ -2,7 +2,10 @@ use std::mem;
 
 use crate::parser::operator::{Bitwise, Comparison, Factor, Logical, Term, Unary};
 
-use super::{literal::Literal, parser::Expression, BinaryExpression};
+use super::{
+    parser::{literal::Literal, Expression},
+    BinaryExpression,
+};
 
 /// Parse-time expression simplification, what is it?
 /// Well, depending on the type of expression, and the type(s) of it's child(ren),
@@ -25,7 +28,11 @@ pub trait Simplify: Sized {
 impl Simplify for Expression {
     fn simplify_cast(mut self, should_simplify: bool) -> Self {
         if should_simplify {
-            if let Self::Cast { left, cast_to } = &self {
+            if let Self::Cast {
+                value: left,
+                new_type: cast_to,
+            } = &self
+            {
                 if let Self::Literal(literal) = &**left {
                     if let Some(new) = literal.cast(cast_to) {
                         let _ = mem::replace(&mut self, new.to_expression());
@@ -49,7 +56,7 @@ impl Simplify for Expression {
                         },
                         _ => None,
                     },
-                    Unary::LogicalNegate => match &**right {
+                    Unary::Not => match &**right {
                         Expression::Literal(literal) => match literal {
                             Literal::Boolean(b) => Some(Literal::Boolean(!b)),
                             Literal::Integer(i) => Some(Literal::Integer(!i)),
@@ -129,6 +136,7 @@ impl Simplify for Expression {
                     let result = match operator {
                         Factor::Multiply => left.mul(right),
                         Factor::Divide => left.div(right),
+                        Factor::Modulo => left.modu(right)
                     };
 
                     if let Some(new) = result {

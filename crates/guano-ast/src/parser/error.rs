@@ -51,6 +51,13 @@ impl<E: std::error::Error> ParseError<E> {
         }
     }
 
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            ParseError::Spanned(_, span) => Some(span.clone()),
+            _ => None,
+        }
+    }
+
     pub fn error_message(&self) -> String {
         match self {
             ParseError::Spanned(error, _) | ParseError::Unspanned(error) => error

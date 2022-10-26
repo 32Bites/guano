@@ -1,4 +1,5 @@
 pub mod escape_char;
+pub mod format_string;
 
 mod spanned_lexer;
 mod token;

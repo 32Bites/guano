@@ -1,9 +1,5 @@
 use logos::{Lexer, Logos, Source};
 
-fn char_parse(lex: &mut Lexer<Token>) -> Option<char> {
-    lex.slice().chars().next()
-}
-
 fn escape_parse(lex: &mut Lexer<Token>) -> Option<char> {
     if let Some(escape_code) = lex.remainder().chars().next() {
         lex.bump(escape_code.len_utf8());
@@ -56,9 +52,8 @@ fn escape_unicode_parse<const N: usize>(lex: &mut Lexer<Token>) -> Option<char> 
 }
 
 #[derive(Debug, Logos, PartialEq)]
-// #[logos(extras = TokenExtras)]
 pub enum Token {
-    #[regex(".", char_parse)]
+    #[regex(".", |lex| lex.slice().chars().next())]
     Char(char),
 
     #[regex(r"\\", escape_parse)]
@@ -95,33 +90,6 @@ impl Token {
         }
     }
 }
-
-/* impl<'source> PushNewlines<'source> for Token {
-    const NEWLINE: Self = Self::Newline;
-
-    fn push_newlines(&self, lex: &Lexer<'source, Self>, newlines: &mut Vec<Option<usize>>)
-        -> usize {
-        match self {
-            Token::Newline => {
-                newlines.push(Some(lex.span().start));
-                1
-            }
-            Token::Error => {
-                let mut count = 0usize;
-                for (position, character) in lex.slice().char_indices() {
-                    if character == '\n' {
-                        count += 1;
-                        let index = lex.span().start + position;
-                        newlines.push(Some(index));
-                    }
-                }
-
-                count
-            },
-            _ => 0
-        }
-    }
-} */
 
 #[cfg(test)]
 mod tests {
