@@ -13,6 +13,7 @@ mod term;
 mod unary;
 
 use guano_lexer::Token;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::parser::{
@@ -34,13 +35,19 @@ use self::{
 
 use super::display::Display;
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionCall {
     pub identifier: Identifier,
     pub arguments: Vec<Expression>,
 }
 
-#[derive(Debug, Clone)]
+impl FunctionCall {
+    pub fn children(&self) -> Vec<&Expression> {
+        self.arguments.iter().collect()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BinaryExpression<Operator: std::fmt::Debug + Clone> {
     pub left: Box<Expression>,
     pub operator: Operator,
@@ -55,9 +62,14 @@ impl<Operator: std::fmt::Debug + Clone> BinaryExpression<Operator> {
             right: Box::new(right),
         }
     }
+
+    pub fn children(&self) -> Vec<&Expression> {
+        vec![&self.left, &self.right]
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Expression {
     Group(Box<Expression>),
     Tuple(Vec<Expression>),
@@ -109,6 +121,29 @@ impl Expression {
 
     pub fn display_grouped(&self) -> Display<'_> {
         Display::new(self, true)
+    }
+
+    pub fn children(&self) -> Vec<&Expression> {
+        match self {
+            Expression::Group(g) => vec![&g],
+            Expression::Tuple(t) => t.iter().collect(),
+            Expression::List(l) => l.iter().collect(),
+            Expression::Literal(_) | Expression::Variable(_) => vec![],
+            Expression::FunctionCall(f) => f.children(),
+            Expression::Factor(f) => f.children(),
+            Expression::Term(t) => t.children(),
+            Expression::Comparison(c) => c.children(),
+            Expression::Bitwise(b) => b.children(),
+            Expression::Logical(l) => l.children(),
+            Expression::Cast { value, new_type: _ } => vec![&value],
+            Expression::Unary { operator: _, right } => vec![&right],
+            Expression::Index { value, index } => vec![&value, &index],
+            Expression::Property { value, property: _ } => vec![&value],
+            Expression::MethodCall { value, method } => {
+                [&**value].into_iter().chain(method.children()).collect()
+            }
+            Expression::Format { format: _, with } => vec![&with],
+        }
     }
 
     pub fn primary(context: &mut ParseContext) -> ParseResult<Expression, ExpressionError> {

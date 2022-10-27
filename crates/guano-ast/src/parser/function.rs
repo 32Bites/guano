@@ -1,6 +1,7 @@
 use guano_lexer::Token;
 use indexmap::{indexmap, IndexMap};
 use itertools::Itertools;
+use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
 use super::{
@@ -11,10 +12,11 @@ use super::{
     Parse, ParseContext,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Function {
     pub name: Identifier,
     pub return_type: Option<Type>,
+    #[serde(with = "indexmap::serde_seq")]
     pub arguments: IndexMap<Identifier, Type>,
     pub block: Block,
 }
@@ -41,17 +43,18 @@ impl std::fmt::Display for Function {
         if let Some(return_type) = &self.return_type {
             write!(f, ": {return_type}")?;
         }
+        f.write_str(" ")?;
         if self.arguments.len() > 0 {
             write!(
                 f,
-                " @ {}",
+                "@ {} ",
                 self.arguments
                     .iter()
                     .map(|(i, t)| format!("{i}: {t}"))
                     .join(", ")
             )?
         }
-        write!(f, " {}", self.block)
+        self.block.fmt(f)
     }
 }
 

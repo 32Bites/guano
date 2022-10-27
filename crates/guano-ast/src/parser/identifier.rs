@@ -1,7 +1,8 @@
 use std::mem;
 
 use convert_case::{Boundary, Case, Casing, StateConverter};
-use guano_lexer::Token;
+use guano_lexer::{Token, logos::Logos};
+use serde::{de::Visitor, Deserialize, Serialize};
 
 use crate::empty_error;
 
@@ -117,6 +118,36 @@ impl Eq for Identifier {}
 impl std::hash::Hash for Identifier {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.value.hash(state);
+    }
+}
+
+impl Serialize for Identifier {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.value)
+    }
+}
+
+impl<'de> Deserialize<'de> for Identifier {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_str(IdentifierVisitor)
+    }
+}
+
+pub struct IdentifierVisitor;
+
+impl<'de> Visitor<'de> for IdentifierVisitor {
+    type Value = Identifier;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("expecting a string that is a valid identifier")
+    }
+
+    fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        if let Some(Token::Identifier(identifier)) = Token::lexer(v).next() {
+            Ok(Identifier::new(identifier))
+        } else {
+            Err(E::custom("string does not fit the identifier regex"))
+        }
     }
 }
 

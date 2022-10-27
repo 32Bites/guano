@@ -74,6 +74,18 @@ impl<E: std::error::Error> ParseError<E> {
             ParseError::EndOfFile => ParseError::EndOfFile,
         }
     }
+
+    pub fn convert_boxed<T: std::error::Error + From<Box<E>>>(self) -> ParseError<T> {
+        match self {
+            ParseError::Spanned(error, span) => {
+                ParseError::Spanned(error.map(|e| Box::new(e).into()), span)
+            }
+            ParseError::Unspanned(error) => {
+                ParseError::Unspanned(error.map(|e| Box::new(e).into()))
+            }
+            ParseError::EndOfFile => ParseError::EndOfFile,
+        }
+    }
 }
 
 impl<E: std::error::Error> std::fmt::Display for ParseError<E> {

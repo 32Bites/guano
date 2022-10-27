@@ -1,16 +1,12 @@
 use std::{fs::read_to_string, path::PathBuf};
 
-use guano_lexer::{logos::Logos, Token};
+use crate::source_files::source_files;
 
 pub fn lex_files(files: Option<&Vec<PathBuf>>) {
-    let files: Box<dyn Iterator<Item = PathBuf>> = if let Some(files) = files {
-        Box::new(files.iter().cloned())
-    } else {
-        Box::new(glob::glob("*.gno").unwrap().filter_map(|r| r.ok()))
-    };
-
-    for file_path in files {
-        let file = read_to_string(&file_path).unwrap();
+    let sources = source_files(files);
+    
+    for file_path in sources {
+        let _file = read_to_string(&file_path).unwrap();
 
         println!("Tokens for {}:", file_path.display());
         /*         for (token, span) in Token::lexer(file.as_str()).to_spanned() {

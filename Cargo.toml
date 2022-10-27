@@ -21,6 +21,9 @@ all = ["default", "jit"]
 
 [dependencies]
 clap = { version = "4.0.10", features = ["derive"] }
+serde_json = "1.0"
+ptree = { version = "0.4.0", features = ["value"] }
+serde-value = "0.7.0"
 glob = "0.3.0"
 guano-lexer = { path = "./crates/guano-lexer", optional = true }
 guano-ast = { path = "./crates/guano-ast", optional = true }

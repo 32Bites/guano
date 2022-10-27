@@ -1,47 +1,27 @@
 use guano_lexer::Token;
+use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
 use super::{
     error::{ParseError, ParseResult, ToParseResult},
     function::{Function, FunctionError},
-    identifier::Identifier,
     statement::{variable::Variable, Statement, StatementError},
     Parse, ParseContext,
 };
 
-#[derive(Debug, Clone)]
-pub enum SourceItem {
-    Variable(Variable),
-    Function(Function),
-}
-
-impl SourceItem {
-    pub fn identifier(&self) -> &Identifier {
-        match self {
-            SourceItem::Variable(v) => &v.identifier,
-            SourceItem::Function(f) => &f.name,
-        }
-    }
-}
-
-impl std::fmt::Display for SourceItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SourceItem::Variable(v) => write!(f, "{v};"),
-            SourceItem::Function(fun) => fun.fmt(f),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceFile {
-    pub source_items: Vec<SourceItem>,
+    pub global_variables: Vec<Variable>,
+    pub functions: Vec<Function>
 }
 
 impl std::fmt::Display for SourceFile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for item in &self.source_items {
-            writeln!(f, "{item}")?;
+        for func in &self.functions {
+            writeln!(f, "{func}")?;
+        }
+        for var in &self.global_variables {
+            writeln!(f, "{var};")?;
         }
         Ok(())
     }
@@ -49,7 +29,8 @@ impl std::fmt::Display for SourceFile {
 
 impl Parse<SourceFileError> for SourceFile {
     fn parse(context: &mut ParseContext) -> ParseResult<Self, SourceFileError> {
-        let mut source_items = vec![];
+        let mut global_variables = vec![];
+        let mut functions = vec![];
 
         loop {
             match &context.stream.peek::<1>()[0] {
@@ -60,7 +41,7 @@ impl Parse<SourceFileError> for SourceFile {
                         if let Statement::Variable(variable) =
                             Statement::parse(context).to_parse_result()?
                         {
-                            source_items.push(SourceItem::Variable(variable));
+                            global_variables.push(variable);
                         } else {
                             unreachable!()
                         }
@@ -70,7 +51,7 @@ impl Parse<SourceFileError> for SourceFile {
                         context.stream.reset_peek();
 
                         let function = Function::parse(context).to_parse_result()?;
-                        source_items.push(SourceItem::Function(function));
+                        functions.push(function);
                     }
                     _ => return Err(ParseError::unexpected_token(span.clone())),
                 },
@@ -78,7 +59,7 @@ impl Parse<SourceFileError> for SourceFile {
             }
         }
 
-        Ok(SourceFile { source_items })
+        Ok(SourceFile { global_variables, functions })
     }
 }
 
@@ -103,13 +84,38 @@ fun main @ args: ([]string, uint) {
     let first: float = 11.0;
     let second: uint = 6;
     let age: float = add(first, second);
+
+    if true {
+
+    }
+
     let new_age: float = add(first, add(second, second));
+
+    if true {
+        
+    } else {
+
+    }
+
+    if true {
+
+    } else if false {
+
+    } else {
+        while true {
+
+        }
+
+        for _ in _ {
+
+        }
+    }
 
     personPrint(age, name);
 }
 
 fun personPrint @ age: float, name: string {
-    print("{}'s age: {}": (name, age)); ## I need to implement format expression parsing.
+    print("{}'s age: {}": (name, age));
 }
 
 fun add: float @ first: float, second: uint {

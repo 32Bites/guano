@@ -1,16 +1,25 @@
 use guano_lexer::Token;
+use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
 use crate::parser::{
+    block::BlockError,
     error::{ParseError, ParseResult, ToParseResult},
     expression::{Expression, ExpressionError},
+    identifier::IdentifierError,
     operator::{Assignment, ParseOperator},
     Parse, ParseContext,
 };
 
-use super::variable::{Variable, VariableError};
+use super::{
+    conditional::Conditional,
+    for_loop::ForLoop,
+    variable::{Variable, VariableError},
+    while_loop::WhileLoop,
+};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Statement {
     Variable(Variable),
     Expression(Expression),
@@ -20,6 +29,9 @@ pub enum Statement {
         operator: Assignment,
         right: Expression,
     },
+    ForLoop(ForLoop),
+    WhileLoop(WhileLoop),
+    Conditional(Conditional),
     Empty,
 }
 
@@ -27,11 +39,11 @@ impl std::fmt::Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Statement::Variable(v) => v.fmt(f)?,
-            Statement::Expression(e) => e.display().fmt(f)?,
+            Statement::Expression(e) => e.fmt(f)?,
             Statement::Return(r) => {
                 f.write_str("return")?;
                 if let Some(r) = r {
-                    write!(f, " {}", r.display())?;
+                    write!(f, " {r}")?;
                 }
             }
             Statement::Assignment {
@@ -40,6 +52,9 @@ impl std::fmt::Display for Statement {
                 right,
             } => write!(f, "{left} {operator} {right}")?,
             Statement::Empty => return Ok(()),
+            Statement::ForLoop(fl) => return fl.fmt(f),
+            Statement::Conditional(c) => return c.fmt(f),
+            Statement::WhileLoop(w) => return w.fmt(f),
         }
 
         f.write_str(";")
@@ -53,6 +68,9 @@ impl Parse<StatementError> for Statement {
                 Token::KeyVar | Token::KeyLet => Statement::variable(context),
                 Token::KeyReturn => Statement::return_(context),
                 Token::Semicolon => Statement::empty(context),
+                Token::KeyIf => return Statement::if_(context),
+                Token::KeyFor => return Statement::for_(context),
+                Token::KeyWhile => return Statement::while_(context),
                 _ => Statement::expression_or_assignment(context),
             },
             None => Err(ParseError::EndOfFile),
@@ -104,9 +122,18 @@ impl Statement {
         }
     }
 
-    // Ignore the random underscore, Rust's lexer does not seem to contextualize that `return`
-    // in this circumstance refers not to the `return` keyword, but a function name... So the
-    // underscore is just a hack to get the lexer to leave me alone ;-;
+    fn if_(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
+        Ok(Statement::Conditional(Conditional::parse(context)?))
+    }
+
+    fn for_(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
+        Ok(Statement::ForLoop(ForLoop::parse(context)?))
+    }
+
+    fn while_(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
+        Ok(Statement::WhileLoop(WhileLoop::parse(context)?))
+    }
+
     fn return_(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
         match &context.stream.read::<1>()[0] {
             Some((Token::KeyReturn, _)) => {
@@ -131,7 +158,11 @@ pub enum StatementError {
     #[error("{0}")]
     VariableError(#[from] VariableError),
     #[error("{0}")]
+    IdentifierError(#[from] IdentifierError),
+    #[error("{0}")]
     ExpressionError(#[from] ExpressionError),
+    #[error("{0}")]
+    BlockError(#[from] BlockError),
     #[error("expected semicolon")]
     MissingSemicolon,
 }

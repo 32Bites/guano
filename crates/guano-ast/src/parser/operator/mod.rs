@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use super::ParseContext;
 
 pub mod assignment;
@@ -18,4 +20,54 @@ pub use unary::UnaryOperator as Unary;
 
 pub trait ParseOperator<T = Self> {
     fn parse(context: &mut ParseContext) -> Option<T>;
+}
+
+pub trait Operator {
+    type Str: AsRef<str>;
+
+    fn name(&self) -> Self::Str;
+    fn code(&self) -> Self::Str;
+
+    fn display_name(&self) -> Display<'_, Self, Name>
+    where
+        Self: Sized,
+    {
+        Display {
+            operator: self,
+            _type: PhantomData,
+        }
+    }
+
+    fn display_code(&self) -> Display<'_, Self, Code>
+    where
+        Self: Sized,
+    {
+        Display {
+            operator: self,
+            _type: PhantomData,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Name;
+#[derive(Debug, Clone)]
+pub struct Code;
+
+#[derive(Debug, Clone)]
+pub struct Display<'a, Op: Operator, T> {
+    operator: &'a Op,
+    _type: PhantomData<T>,
+}
+
+impl<Op: Operator> std::fmt::Display for Display<'_, Op, Name> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.operator.name().as_ref())
+    }
+}
+
+impl<Op: Operator> std::fmt::Display for Display<'_, Op, Code> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.operator.code().as_ref())
+    }
 }

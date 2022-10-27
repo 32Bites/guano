@@ -1,16 +1,17 @@
 use guano_lexer::Token;
 use indenter::indented;
+use serde::{Serialize, Deserialize};
 use std::fmt::Write;
 use thiserror::Error;
 
 use crate::parser::{
-    error::{ParseError, ParseResult, ToParseError, ToParseResult},
+    error::{ParseError, ParseResult, ToParseError},
     Parse, ParseContext,
 };
 
 use super::statement::{Statement, StatementError};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     pub items: Vec<BlockItem>,
 }
@@ -51,7 +52,9 @@ impl Parse<BlockError> for Block {
 
                     _ => {
                         context.stream.reset_peek();
-                        BlockItem::Statement(Statement::parse(context).to_parse_result()?)
+                        BlockItem::Statement(
+                            Statement::parse(context).map_err(|e| e.convert_boxed())?,
+                        )
                     }
                 },
             };
@@ -67,7 +70,8 @@ impl Parse<BlockError> for Block {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum BlockItem {
     Statement(Statement),
     Block(Block),
@@ -85,7 +89,7 @@ impl std::fmt::Display for BlockItem {
 #[derive(Debug, Error)]
 pub enum BlockError {
     #[error("{0}")]
-    StatementError(#[from] StatementError),
+    StatementError(#[from] Box<StatementError>),
     #[error("missing closing brace")]
     MissingClose,
 }

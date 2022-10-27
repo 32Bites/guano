@@ -1,26 +1,29 @@
 use guano_lexer::Token;
+use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
 use crate::parser::{
     error::{ParseError, ParseResult, ToParseError, ToParseResult},
-    expression::{Expression, ExpressionError},
-    identifier::{Identifier, IdentifierError},
+    expression::Expression,
+    identifier::Identifier,
     typing::{Type, TypeError},
     Parse, ParseContext,
 };
 
-#[derive(Debug, Clone)]
+use super::StatementError;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Variable {
     pub mutability: Mutability,
-    pub identifier: Identifier,
-    pub provided_type: Option<Type>,
+    pub name: Identifier,
+    pub value_type: Option<Type>,
     pub value: Option<Expression>,
 }
 
 impl std::fmt::Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let type_string = self
-            .provided_type
+            .value_type
             .as_ref()
             .map_or("".to_string(), |t| format!(": {t}"));
         let value_string = self
@@ -31,7 +34,7 @@ impl std::fmt::Display for Variable {
         write!(
             f,
             "{} {}{type_string}{value_string}",
-            self.mutability, self.identifier
+            self.mutability, self.name
         )
     }
 }
@@ -40,7 +43,7 @@ impl Variable {
     fn parse_name(
         context: &mut ParseContext,
         mutability: &Mutability,
-    ) -> ParseResult<Identifier, VariableError> {
+    ) -> ParseResult<Identifier, StatementError> {
         match &context.stream.peek::<1>()[0] {
             Some((Token::Identifier(_), _)) => Identifier::parse(context).to_parse_result(),
             Some((_, span)) => {
@@ -53,7 +56,8 @@ impl Variable {
                     .ok_or(ParseError::unexpected_token(span.clone()))?;
 
                 match Variable::parse(&mut test_context) {
-                    Ok(_) => Err(VariableError::MissingName.to_parse_error(span.clone())),
+                    Ok(_) => Err(VariableError::MissingName.to_parse_error(span.clone()))
+                        .to_parse_result(),
                     Err(_) => Err(ParseError::unexpected_token(span.clone())),
                 }
             }
@@ -63,15 +67,19 @@ impl Variable {
     }
 }
 
-impl Parse<VariableError> for Variable {
-    fn parse(context: &mut ParseContext) -> ParseResult<Variable, VariableError> {
+impl Parse<StatementError> for Variable {
+    fn parse(context: &mut ParseContext) -> ParseResult<Variable, StatementError> {
         let mutability = Mutability::parse(context)?;
         let identifier = Variable::parse_name(context, &mutability)?;
 
         let provided_type = match context.stream.peek_token::<1>()[0] {
             Some(Token::Colon) => {
                 context.stream.read::<1>();
-                Some(Type::parse(context).to_parse_result()?)
+                Some(
+                    Type::parse(context)
+                        .map_err(|e| e.convert::<VariableError>())
+                        .to_parse_result()?,
+                )
             }
             _ => {
                 context.stream.reset_peek();
@@ -94,14 +102,15 @@ impl Parse<VariableError> for Variable {
 
         Ok(Variable {
             mutability,
-            identifier,
-            provided_type,
+            name: identifier,
+            value_type: provided_type,
             value,
         })
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -125,8 +134,8 @@ impl Mutability {
     }
 }
 
-impl Parse<VariableError> for Mutability {
-    fn parse(parser: &mut ParseContext) -> ParseResult<Mutability, VariableError> {
+impl Parse<StatementError> for Mutability {
+    fn parse(parser: &mut ParseContext) -> ParseResult<Mutability, StatementError> {
         match &parser.stream.read::<1>()[0] {
             Some((Token::KeyLet, _)) => Ok(Mutability::Immutable),
             Some((Token::KeyVar, _)) => Ok(Mutability::Mutable),
@@ -142,10 +151,6 @@ pub enum VariableError {
     MissingName,
     #[error("{0}")]
     InvalidType(#[from] TypeError),
-    #[error("{0}")]
-    InvalidExpression(#[from] ExpressionError),
-    #[error("{0}")]
-    InvalidIdentifier(#[from] IdentifierError),
     /*     #[error("value type of expression does not match the specified type")]
     TypeMismatch, */
     #[error("variable statements must start with `var` or `let`")]

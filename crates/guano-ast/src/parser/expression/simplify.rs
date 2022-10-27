@@ -109,7 +109,7 @@ impl Simplify for Expression {
                         Comparison::LessThan => left.lt(right),
                         Comparison::LessThanEquals => left.le(right),
                         Comparison::Equals => left.eq(right),
-                        Comparison::NotEquals => left.ne(right),
+                        Comparison::NotEqual => left.ne(right),
                     }
                     .map(|b| Literal::Boolean(b));
 
@@ -136,7 +136,7 @@ impl Simplify for Expression {
                     let result = match operator {
                         Factor::Multiply => left.mul(right),
                         Factor::Divide => left.div(right),
-                        Factor::Modulo => left.modu(right)
+                        Factor::Modulo => left.modu(right),
                     };
 
                     if let Some(new) = result {

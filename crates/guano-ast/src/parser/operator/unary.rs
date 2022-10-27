@@ -1,17 +1,28 @@
 use guano_lexer::Token;
+use serde::{Serialize, Deserialize};
 
 use crate::parser::ParseContext;
 
-use super::ParseOperator;
+use super::{ParseOperator, Operator};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum UnaryOperator {
     Negate,
     Not,
 }
 
-impl AsRef<str> for UnaryOperator {
-    fn as_ref(&self) -> &str {
+impl Operator for UnaryOperator {
+    type Str = &'static str;
+    
+    fn name(&self) -> Self::Str {
+        match self {
+            UnaryOperator::Negate => "negate",
+            UnaryOperator::Not => "not",
+        }
+    }
+
+    fn code(&self) -> Self::Str {
         match self {
             UnaryOperator::Negate => "-",
             UnaryOperator::Not => "!",
@@ -21,7 +32,7 @@ impl AsRef<str> for UnaryOperator {
 
 impl std::fmt::Display for UnaryOperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())
+        f.write_str(self.code())
     }
 }
 

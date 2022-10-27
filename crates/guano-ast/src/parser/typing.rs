@@ -1,5 +1,6 @@
 use guano_lexer::Token;
 use itertools::Itertools;
+use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
 use super::{
@@ -7,7 +8,8 @@ use super::{
     Parse, ParseContext,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Type {
     String,
     Character,

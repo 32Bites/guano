@@ -8,5 +8,7 @@ mod parser;
 pub mod source_file;
 pub mod statement;
 pub mod typing;
+pub mod spanned;
+pub mod token_stream;
 
 pub use parser::*;

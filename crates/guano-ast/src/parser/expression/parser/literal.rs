@@ -6,6 +6,7 @@ use bigdecimal::{
 };
 use guano_lexer::{escape_char::Token as EscapeToken, logos::Logos, Token};
 use num::BigInt;
+use serde::{Serialize, Deserialize};
 use thiserror::Error;
 
 use crate::parser::{
@@ -16,7 +17,8 @@ use crate::parser::{
 
 use super::Expression;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Literal {
     String(String),
     Character(char),

@@ -1,10 +1,12 @@
 use guano_lexer::Token;
+use serde::{Deserialize, Serialize};
 
 use crate::parser::ParseContext;
 
-use super::{Bitwise, Factor, Logical, ParseOperator, Term};
+use super::{Bitwise, Factor, Logical, Operator, ParseOperator, Term};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum AssignmentOperator {
     Assign,
     Term(Term),
@@ -17,10 +19,10 @@ impl AssignmentOperator {
     fn variant_string(&self) -> &str {
         match self {
             AssignmentOperator::Assign => "",
-            AssignmentOperator::Term(t) => t.as_ref(),
-            AssignmentOperator::Factor(f) => f.as_ref(),
-            AssignmentOperator::Bitwise(b) => b.as_ref(),
-            AssignmentOperator::Logical(l) => l.as_ref(),
+            AssignmentOperator::Term(t) => t.code(),
+            AssignmentOperator::Factor(f) => f.code(),
+            AssignmentOperator::Bitwise(b) => b.code(),
+            AssignmentOperator::Logical(l) => l.code(),
         }
     }
 }
@@ -76,6 +78,36 @@ impl ParseOperator for AssignmentOperator {
                 return None;
             }
         })
+    }
+}
+
+impl Operator for AssignmentOperator {
+    type Str = String;
+
+    fn name(&self) -> Self::Str {
+        format!(
+            "{} assignment",
+            match self {
+                AssignmentOperator::Assign => "",
+                AssignmentOperator::Term(t) => t.name(),
+                AssignmentOperator::Factor(f) => f.name(),
+                AssignmentOperator::Bitwise(b) => b.name(),
+                AssignmentOperator::Logical(l) => l.name(),
+            }
+        )
+    }
+
+    fn code(&self) -> Self::Str {
+        format!(
+            "{}=",
+            match self {
+                AssignmentOperator::Assign => "",
+                AssignmentOperator::Term(t) => t.code(),
+                AssignmentOperator::Factor(f) => f.code(),
+                AssignmentOperator::Bitwise(b) => b.code(),
+                AssignmentOperator::Logical(l) => l.code(),
+            }
+        )
     }
 }
 
