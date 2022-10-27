@@ -260,9 +260,6 @@ impl std::fmt::Display for Token {
             Token::PrimStr => "String Type",
             Token::PrimCharacter => "Character Type",
             Token::PrimBool => "Bool Type",
-            /*             Token::PrimUnsignedInteger(b) => todo!(),
-            Token::PrimInteger(_) => todo!(),
-            Token::PrimFloat(_) => todo!(), */
             Token::PrimUnsignedInteger => "Unsigned Integer Type",
             Token::PrimInteger => "Signed Integer Type",
             Token::PrimFloat => "Floating Point Type",
