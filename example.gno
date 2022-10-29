@@ -28,3 +28,6 @@ fun personPrint @ age: float, name: string {
 fun add: float @ first: float, second: uint {
     return first + second as float;
 }
+
+let test = (5 + 6) << 1 >> 2 + ree(1)[0][1].ree.ree().mee(1, 2) as []uint + (1, 2) - (1 + 4,) + (1,);
+let i = 1;

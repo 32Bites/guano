@@ -33,7 +33,6 @@ impl MergeSpan for Span {
         if let (Some(start), Some(end)) = (self, end) {
             Some(start.start..end.end)
         } else {
-            dbg!(&self, &end);
             None
         }
     }
