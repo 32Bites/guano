@@ -1,9 +1,12 @@
 use guano_lexer::Token;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::parser::ParseContext;
+use crate::parser::{
+    token_stream::{Spanned, ToSpanned},
+    ParseContext,
+};
 
-use super::{ParseOperator, Operator};
+use super::{Operator, ParseOperator};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -14,7 +17,7 @@ pub enum UnaryOperator {
 
 impl Operator for UnaryOperator {
     type Str = &'static str;
-    
+
     fn name(&self) -> Self::Str {
         match self {
             UnaryOperator::Negate => "negate",
@@ -37,7 +40,7 @@ impl std::fmt::Display for UnaryOperator {
 }
 
 impl ParseOperator for UnaryOperator {
-    fn parse(context: &mut ParseContext) -> Option<Self> {
+    fn parse(context: &mut ParseContext) -> Option<Spanned<Self>> {
         let operator = match context.stream.peek_token::<1>()[0] {
             Some(Token::Exclamation) => UnaryOperator::Not,
             Some(Token::Minus) => UnaryOperator::Negate,
@@ -46,8 +49,8 @@ impl ParseOperator for UnaryOperator {
                 return None;
             }
         };
-        context.stream.read::<1>();
+        let span = context.stream.read_span::<1>()[0].clone()?;
 
-        Some(operator)
+        Some(operator.to_spanned(span))
     }
 }

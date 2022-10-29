@@ -1,11 +1,12 @@
 use guano_lexer::Token;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::parser::{
     error::{ParseError, ParseResult, ToParseError, ToParseResult},
     expression::Expression,
     identifier::Identifier,
+    token_stream::{MergeSpan, Spanned, ToSpanned},
     typing::{Type, TypeError},
     Parse, ParseContext,
 };
@@ -14,8 +15,8 @@ use super::StatementError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Variable {
-    pub mutability: Mutability,
-    pub name: Identifier,
+    pub mutability: Spanned<Mutability>,
+    pub identifier: Identifier,
     pub value_type: Option<Type>,
     pub value: Option<Expression>,
 }
@@ -34,7 +35,7 @@ impl std::fmt::Display for Variable {
         write!(
             f,
             "{} {}{type_string}{value_string}",
-            self.mutability, self.name
+            self.mutability, self.identifier
         )
     }
 }
@@ -67,19 +68,25 @@ impl Variable {
     }
 }
 
-impl Parse<StatementError> for Variable {
-    fn parse(context: &mut ParseContext) -> ParseResult<Variable, StatementError> {
+impl Parse<StatementError, Spanned<Variable>> for Variable {
+    fn parse(context: &mut ParseContext) -> ParseResult<Spanned<Variable>, StatementError> {
         let mutability = Mutability::parse(context)?;
-        let identifier = Variable::parse_name(context, &mutability)?;
+        let mut final_span = mutability.span.clone();
+        let identifier = Variable::parse_name(context, &mutability.value)?;
+        final_span = final_span.merge(&identifier.span);
 
-        let provided_type = match context.stream.peek_token::<1>()[0] {
-            Some(Token::Colon) => {
+        let value_type = match &context.stream.peek::<1>()[0] {
+            Some((Token::Colon, span)) => {
+                final_span = final_span.merge(span);
                 context.stream.read::<1>();
-                Some(
-                    Type::parse(context)
-                        .map_err(|e| e.convert::<VariableError>())
-                        .to_parse_result()?,
-                )
+
+                let the_type = Type::parse(context)
+                    .map_err(|e| e.convert::<VariableError>())
+                    .to_parse_result()?;
+
+                final_span = final_span.merge(&the_type.span);
+
+                Some(the_type)
             }
             _ => {
                 context.stream.reset_peek();
@@ -87,11 +94,16 @@ impl Parse<StatementError> for Variable {
             }
         };
 
-        let value = match context.stream.peek_token::<1>()[0] {
-            Some(Token::Equals) => {
+        let value = match &context.stream.peek::<1>()[0] {
+            Some((Token::Equals, span)) => {
+                final_span = final_span.merge(span);
                 context.stream.read::<1>();
 
-                Some(Expression::parse(context).to_parse_result()?)
+                let expr = Expression::parse(context).to_parse_result()?;
+
+                final_span = final_span.merge(&expr.span);
+
+                Some(expr)
             }
 
             _ => {
@@ -102,10 +114,11 @@ impl Parse<StatementError> for Variable {
 
         Ok(Variable {
             mutability,
-            name: identifier,
-            value_type: provided_type,
+            identifier,
+            value_type,
             value,
-        })
+        }
+        .to_spanned(final_span))
     }
 }
 
@@ -134,11 +147,11 @@ impl Mutability {
     }
 }
 
-impl Parse<StatementError> for Mutability {
-    fn parse(parser: &mut ParseContext) -> ParseResult<Mutability, StatementError> {
+impl Parse<StatementError, Spanned<Mutability>> for Mutability {
+    fn parse(parser: &mut ParseContext) -> ParseResult<Spanned<Mutability>, StatementError> {
         match &parser.stream.read::<1>()[0] {
-            Some((Token::KeyLet, _)) => Ok(Mutability::Immutable),
-            Some((Token::KeyVar, _)) => Ok(Mutability::Mutable),
+            Some((Token::KeyLet, span)) => Ok(Mutability::Immutable.to_spanned(span.clone())),
+            Some((Token::KeyVar, span)) => Ok(Mutability::Mutable.to_spanned(span.clone())),
             Some((_, span)) => Err(ParseError::unexpected_token(span.clone())),
             None => Err(ParseError::EndOfFile),
         }

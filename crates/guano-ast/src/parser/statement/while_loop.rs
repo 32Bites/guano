@@ -1,10 +1,11 @@
 use guano_lexer::Token;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::parser::{
     block::Block,
     error::{ParseError, ParseResult, ToParseResult},
     expression::Expression,
+    token_stream::{MergeSpan, Spanned, ToSpanned},
     Parse, ParseContext,
 };
 
@@ -16,14 +17,16 @@ pub struct WhileLoop {
     pub block: Block,
 }
 
-impl Parse<StatementError> for WhileLoop {
-    fn parse(context: &mut ParseContext) -> ParseResult<Self, StatementError> {
+impl Parse<StatementError, Spanned<WhileLoop>> for WhileLoop {
+    fn parse(context: &mut ParseContext) -> ParseResult<Spanned<WhileLoop>, StatementError> {
         match &context.stream.read::<1>()[0] {
             Some((token, span)) => match token {
                 Token::KeyWhile => {
                     let condition = Expression::parse(context).to_parse_result()?;
                     let block = Block::parse(context).to_parse_result()?;
-                    Ok(WhileLoop { condition, block })
+
+                    let span = span.merge(&condition.span).merge(&block.span);
+                    Ok(WhileLoop { condition, block }.to_spanned(span))
                 }
                 _ => Err(ParseError::unexpected_token(span.clone())),
             },

@@ -1,9 +1,12 @@
 use guano_lexer::Token;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::parser::ParseContext;
+use crate::parser::{
+    token_stream::{Spanned, ToSpanned},
+    ParseContext,
+};
 
-use super::{ParseOperator, Operator};
+use super::{Operator, ParseOperator};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -37,7 +40,7 @@ impl Operator for LogicalOperator {
 }
 
 impl ParseOperator for LogicalOperator {
-    fn parse(context: &mut ParseContext) -> Option<Self> {
+    fn parse(context: &mut ParseContext) -> Option<Spanned<Self>> {
         let operator = match context.stream.peek_token::<2>() {
             [Some(Token::Pipe), Some(Token::Pipe)] => LogicalOperator::Or,
             [Some(Token::Ampersand), Some(Token::Ampersand)] => LogicalOperator::And,
@@ -46,8 +49,8 @@ impl ParseOperator for LogicalOperator {
                 return None;
             }
         };
-        context.stream.read::<2>();
+        let span = context.stream.read_span_combined::<2>()?;
 
-        Some(operator)
+        Some(operator.to_spanned(span))
     }
 }

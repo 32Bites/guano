@@ -1,6 +1,6 @@
 use guano_lexer::Token;
 use indenter::indented;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 use thiserror::Error;
 
@@ -9,11 +9,21 @@ use crate::parser::{
     Parse, ParseContext,
 };
 
-use super::statement::{Statement, StatementError};
+use super::{
+    statement::{Statement, StatementError},
+    token_stream::{MergeSpan, Span, Spannable},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     pub items: Vec<BlockItem>,
+    pub span: Span,
+}
+
+impl Spannable for Block {
+    fn get_span(&self) -> Span {
+        self.span.clone()
+    }
 }
 
 impl std::fmt::Display for Block {
@@ -29,14 +39,14 @@ impl std::fmt::Display for Block {
 
 impl Parse<BlockError> for Block {
     fn parse(context: &mut ParseContext) -> ParseResult<Block, BlockError> {
-        match &context.stream.read::<1>()[0] {
+        let mut final_span = match &context.stream.read::<1>()[0] {
             Some((token, span)) => match token {
-                Token::OpenBrace => {}
+                Token::OpenBrace => span.clone(),
                 _ => return Err(ParseError::unexpected_token(span.clone())),
             },
 
             None => return Err(ParseError::EndOfFile),
-        }
+        };
 
         let mut items: Vec<BlockItem> = vec![];
 
@@ -48,13 +58,25 @@ impl Parse<BlockError> for Block {
                 }
 
                 Some(token) => match token {
-                    Token::OpenBrace => BlockItem::Block(Block::parse(context)?),
+                    Token::OpenBrace => {
+                        let block = Block::parse(context)?;
+                        final_span = final_span.merge(&block.span);
+                        BlockItem::Block(block)
+                    }
 
                     _ => {
                         context.stream.reset_peek();
-                        BlockItem::Statement(
-                            Statement::parse(context).map_err(|e| e.convert_boxed())?,
-                        )
+                        let statement =
+                            match Statement::parse(context).map_err(|e| e.convert_boxed())? {
+                                Ok(statement) => statement,
+                                Err(span) => {
+                                    final_span = final_span.merge(&span);
+                                    continue;
+                                }
+                            };
+                        final_span = final_span.merge(&statement.span);
+
+                        BlockItem::Statement(statement)
                     }
                 },
             };
@@ -63,7 +85,13 @@ impl Parse<BlockError> for Block {
         }
 
         match &context.stream.read::<1>()[0] {
-            Some((Token::CloseBrace, _)) => Ok(Block { items }),
+            Some((Token::CloseBrace, span)) => {
+                final_span = final_span.merge(span);
+                Ok(Block {
+                    items,
+                    span: final_span,
+                })
+            }
             Some((_, span)) => Err(BlockError::MissingClose.to_parse_error(span.clone())),
             None => Err(ParseError::EndOfFile),
         }

@@ -7,8 +7,7 @@ pub mod operator;
 mod parser;
 pub mod source_file;
 pub mod statement;
-pub mod typing;
-pub mod spanned;
 pub mod token_stream;
+pub mod typing;
 
 pub use parser::*;

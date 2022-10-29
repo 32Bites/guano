@@ -1,9 +1,12 @@
 use guano_lexer::Token;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::parser::ParseContext;
+use crate::parser::{
+    token_stream::{Spanned, ToSpanned},
+    ParseContext,
+};
 
-use super::{ParseOperator, Operator};
+use super::{Operator, ParseOperator};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -49,42 +52,42 @@ impl Operator for ComparisonOperator {
 }
 
 impl ParseOperator for ComparisonOperator {
-    fn parse(context: &mut ParseContext) -> Option<Self> {
-        let operator = match context.stream.peek_token::<2>() {
+    fn parse(context: &mut ParseContext) -> Option<Spanned<Self>> {
+        let (operator, span) = match context.stream.peek_token::<2>() {
             [Some(Token::GreaterThan), n] if !matches!(n, Some(Token::GreaterThan)) => match n {
-                Some(Token::Equals) => {
-                    context.stream.read::<2>();
-                    ComparisonOperator::GreaterThanEquals
-                }
-                _ => {
-                    context.stream.read::<1>();
-                    ComparisonOperator::GreaterThan
-                }
+                Some(Token::Equals) => (
+                    ComparisonOperator::GreaterThanEquals,
+                    context.stream.read_span_combined::<2>()?,
+                ),
+                _ => (
+                    ComparisonOperator::GreaterThan,
+                    context.stream.read_span::<1>()[0].clone()?,
+                ),
             },
             [Some(Token::LessThan), n] if !matches!(n, Some(Token::LessThan)) => match n {
-                Some(Token::Equals) => {
-                    context.stream.read::<2>();
-                    ComparisonOperator::LessThanEquals
-                }
-                _ => {
-                    context.stream.read::<1>();
-                    ComparisonOperator::LessThan
-                }
+                Some(Token::Equals) => (
+                    ComparisonOperator::LessThanEquals,
+                    context.stream.read_span_combined::<2>()?,
+                ),
+                _ => (
+                    ComparisonOperator::LessThan,
+                    context.stream.read_span::<1>()[0].clone()?,
+                ),
             },
-            [Some(Token::Equals), Some(Token::Equals)] => {
-                context.stream.read::<2>();
-                ComparisonOperator::Equals
-            }
-            [Some(Token::Exclamation), Some(Token::Equals)] => {
-                context.stream.read::<2>();
-                ComparisonOperator::NotEqual
-            }
+            [Some(Token::Equals), Some(Token::Equals)] => (
+                ComparisonOperator::Equals,
+                context.stream.read_span_combined::<2>()?,
+            ),
+            [Some(Token::Exclamation), Some(Token::Equals)] => (
+                ComparisonOperator::NotEqual,
+                context.stream.read_span_combined::<2>()?,
+            ),
             _ => {
                 context.stream.reset_peek();
                 return None;
             }
         };
 
-        Some(operator)
+        Some(operator.to_spanned(span))
     }
 }

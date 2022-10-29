@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use super::ParseContext;
+use super::{token_stream::Spanned, ParseContext};
 
 pub mod assignment;
 pub mod bitwise;
@@ -19,7 +19,7 @@ pub use term::TermOperator as Term;
 pub use unary::UnaryOperator as Unary;
 
 pub trait ParseOperator<T = Self> {
-    fn parse(context: &mut ParseContext) -> Option<T>;
+    fn parse(context: &mut ParseContext) -> Option<Spanned<T>>;
 }
 
 pub trait Operator {

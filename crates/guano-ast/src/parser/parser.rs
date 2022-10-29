@@ -1,10 +1,7 @@
 use codespan::{FileId, Files};
 use std::{collections::HashMap, ffi::OsString, sync::Arc};
 
-use guano_lexer::{
-    logos::Logos,
-    SpannedLexer, Token,
-};
+use guano_lexer::{logos::Logos, SpannedLexer, Token};
 
 use super::{
     error::ParseResult,
@@ -12,25 +9,6 @@ use super::{
     token_stream::{TokenSource, TokenStream},
 };
 
-/* pub type NodeId = usize;
-
-#[derive(Debug, Clone)]
-pub enum NodeValue {
-    Expression,
-    Block,
-    Type,
-    Statement,
-    Function,
-    Operator,
-}
-
-#[derive(Debug, Clone)]
-pub struct Node {
-    pub id: NodeId,
-    pub value: Option<NodeValue>,
-    pub span: Span,
-}
- */
 #[derive(Debug, Clone)]
 pub struct ParseContext {
     pub(crate) file_id: FileId,
@@ -38,7 +16,6 @@ pub struct ParseContext {
     pub(crate) simplified_expressions: bool,
     pub(crate) depth: usize,
     pub(crate) max_depth: usize,
-    // pub(crate) e: usize,
 }
 
 impl ParseContext {
@@ -55,7 +32,6 @@ impl ParseContext {
             simplified_expressions,
             depth,
             max_depth,
-            // e: Default::default(),
         }
     }
 

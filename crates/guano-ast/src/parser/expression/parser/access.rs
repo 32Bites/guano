@@ -2,48 +2,66 @@ use guano_lexer::Token;
 
 use crate::parser::{
     error::{ParseError, ParseResult},
+    token_stream::MergeSpan,
     Parse, ParseContext,
 };
 
-use super::{external::parse_external, Expression, ExpressionError};
+use super::{external::parse_external, Expression, ExpressionError, ExpressionKind};
 
 pub fn parse_access(context: &mut ParseContext) -> ParseResult<Expression, ExpressionError> {
     let mut value = Expression::primary(context)?;
 
     loop {
-        match context.stream.peek_token::<1>()[0] {
-            Some(Token::Period) => {
-                context.stream.read::<1>();
+        match &context.stream.peek::<1>()[0] {
+            Some((token, span)) => match token {
+                Token::Period => {
+                    context.stream.read::<1>();
 
-                value = match parse_external(context)? {
-                    Expression::FunctionCall(method) => Expression::MethodCall {
-                        value: Box::new(value),
-                        method,
-                    },
-                    Expression::Variable(property) => Expression::Property {
-                        value: Box::new(value),
-                        property,
-                    },
-                    _ => unreachable!(),
-                };
-            }
-            Some(Token::OpenBracket) => {
-                context.stream.read::<1>();
-                let index = Expression::parse(context)?;
+                    let accessor = parse_external(context)?;
+                    let final_span = value.span.merge(span).merge(&accessor.span);
 
-                match &context.stream.read::<1>()[0] {
-                    Some((token, span)) => match token {
-                        Token::CloseBracket => {
-                            value = Expression::Index {
-                                value: Box::new(value),
-                                index: Box::new(index),
-                            };
-                        }
-                        _ => return Err(ParseError::unexpected_token(span.clone())),
-                    },
-                    None => return Err(ParseError::EndOfFile),
+                    let kind = match accessor.kind {
+                        ExpressionKind::FunctionCall(method) => ExpressionKind::MethodCall {
+                            value: Box::new(value),
+                            method,
+                        },
+                        ExpressionKind::Variable(property) => ExpressionKind::Property {
+                            value: Box::new(value),
+                            property,
+                        },
+                        _ => unreachable!(),
+                    };
+
+                    value = Expression::new(kind, final_span);
                 }
-            }
+                Token::OpenBracket => {
+                    context.stream.read::<1>();
+                    let index_expr = Expression::parse(context)?;
+                    let start_span = value.span.merge(span).merge(&index_expr.span);
+
+                    match &context.stream.read::<1>()[0] {
+                        Some((token, span)) => match token {
+                            Token::CloseBracket => {
+                                let final_span = start_span.merge(span);
+
+                                let kind = ExpressionKind::Index {
+                                    value: Box::new(value),
+                                    index: Box::new(index_expr),
+                                };
+
+                                value = Expression::new(kind, final_span);
+                            }
+                            _ => return Err(ParseError::unexpected_token(span.clone())),
+                        },
+                        None => return Err(ParseError::EndOfFile),
+                    }
+                }
+                _ => {
+                    context.stream.reset_peek();
+                    break;
+                }
+            },
+
             _ => {
                 context.stream.reset_peek();
                 break;

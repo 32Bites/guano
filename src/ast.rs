@@ -1,4 +1,4 @@
-use std::{path::PathBuf, fs::read_to_string};
+use std::{fs::read_to_string, path::PathBuf};
 
 use guano_ast::parser::Parser;
 use ptree::print_tree;
@@ -15,9 +15,9 @@ pub fn parse(files: Option<&Vec<PathBuf>>) {
 
         match result {
             Ok(ast) => {
-                // println!("{}", serde_json::to_string_pretty(ast).unwrap());
+                //println!("{}", serde_json::to_string_pretty(ast).unwrap());
                 ptree::print_tree(&serde_value::to_value(ast).unwrap()).unwrap();
-            },
+            }
             Err(error) => panic!("{error}"),
         }
     }

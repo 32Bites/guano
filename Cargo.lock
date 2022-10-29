@@ -248,7 +248,6 @@ dependencies = [
  "dyn-clone",
  "guano-lexer",
  "indenter",
- "indexmap",
  "itertools",
  "num",
  "serde 1.0.147",
@@ -316,7 +315,6 @@ checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
 dependencies = [
  "autocfg",
  "hashbrown",
- "serde 1.0.147",
 ]
 
 [[package]]

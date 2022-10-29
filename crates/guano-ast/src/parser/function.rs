@@ -1,121 +1,165 @@
 use guano_lexer::Token;
-use indexmap::{indexmap, IndexMap};
 use itertools::Itertools;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::{
     block::{Block, BlockError},
-    error::{ParseError, ParseResult, ToParseError, ToParseResult},
+    error::{ParseError, ParseResult, ToParseResult},
     identifier::{Identifier, IdentifierError},
+    token_stream::{MergeSpan, Span, Spannable, Spanned, ToSpanned},
     typing::{Type, TypeError},
     Parse, ParseContext,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Function {
-    pub name: Identifier,
+    pub identifier: Identifier,
     pub return_type: Option<Type>,
-    #[serde(with = "indexmap::serde_seq")]
-    pub arguments: IndexMap<Identifier, Type>,
+    pub arguments: Option<Spanned<Vec<Argument>>>,
     pub block: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Argument {
+    pub identifier: Identifier,
+    pub associated_type: Type,
+    pub span: Span,
 }
 
 impl Parse<FunctionError> for Function {
     fn parse(context: &mut ParseContext) -> ParseResult<Function, FunctionError> {
-        let name = Function::name(context)?;
-        let return_type = Function::return_type(context)?;
+        let mut final_span = match &context.stream.read::<1>()[0] {
+            Some((Token::KeyFun, span)) => span.clone(),
+            Some((_, span)) => return Err(ParseError::unexpected_token(span.clone())),
+            None => return Err(ParseError::EndOfFile),
+        };
+
+        let identifier = Identifier::parse(context).to_parse_result()?;
+
+        final_span = final_span.merge(&identifier.span);
+
+        let return_type = if let Some((Token::Colon, span)) = &context.stream.peek::<1>()[0] {
+            final_span = final_span.merge(span);
+            context.stream.read::<1>();
+
+            let return_type = Type::parse(context).to_parse_result()?;
+            final_span = final_span.merge(&return_type.span);
+
+            Some(return_type)
+        } else {
+            context.stream.reset_peek();
+            None // No return type
+        };
+
         let arguments = Function::arguments(context).to_parse_result()?;
+
+        if let Some(arguments) = &arguments {
+            final_span = final_span.merge(&arguments.span);
+        }
+
         let block = Block::parse(context).to_parse_result()?;
 
+        final_span = final_span.merge(&block.span);
+
         Ok(Function {
-            name,
+            identifier,
             return_type,
             arguments,
             block,
+            span: final_span,
         })
+    }
+}
+
+impl Spannable for Function {
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 }
 
 impl std::fmt::Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "fun {}", self.name)?;
+        write!(f, "fun {}", self.identifier)?;
         if let Some(return_type) = &self.return_type {
             write!(f, ": {return_type}")?;
         }
         f.write_str(" ")?;
-        if self.arguments.len() > 0 {
+        if let Some(Spanned {
+            value: arguments,
+            span: _,
+        }) = &self.arguments
+        {
             write!(
                 f,
                 "@ {} ",
-                self.arguments
+                arguments
                     .iter()
-                    .map(|(i, t)| format!("{i}: {t}"))
+                    .map(
+                        |Argument {
+                             identifier,
+                             associated_type,
+                             span: _,
+                         }| format!("{identifier}: {associated_type}")
+                    )
                     .join(", ")
             )?
         }
+
         self.block.fmt(f)
     }
 }
 
 impl Function {
-    fn name(context: &mut ParseContext) -> ParseResult<Identifier, FunctionError> {
-        match &context.stream.read::<1>()[0] {
-            Some((Token::KeyFun, _)) => Identifier::parse(context).to_parse_result(),
-            Some((_, span)) => Err(ParseError::unexpected_token(span.clone())),
-            None => Err(ParseError::EndOfFile),
-        }
-    }
-
-    fn return_type(context: &mut ParseContext) -> ParseResult<Option<Type>, FunctionError> {
-        if let Some(Token::Colon) = context.stream.peek_token::<1>()[0] {
-            context.stream.read::<1>();
-
-            Ok(Some(Type::parse(context).to_parse_result()?))
-        } else {
-            context.stream.reset_peek();
-            Ok(None) // No return type
-        }
-    }
-
     fn arguments(
         context: &mut ParseContext,
-    ) -> ParseResult<IndexMap<Identifier, Type>, ArgumentError> {
-        let mut arguments = indexmap! {};
-        if let Some(Token::Asperand) = context.stream.peek_token::<1>()[0] {
+    ) -> ParseResult<Option<Spanned<Vec<Argument>>>, ArgumentError> {
+        if let Some((Token::Asperand, span)) = &context.stream.peek::<1>()[0] {
             context.stream.read::<1>();
+            let mut arguments = vec![];
+            let mut final_span = span.clone();
 
             loop {
-                let (identifier, argument_type) = Function::argument(context)?;
-                if arguments.insert(identifier, argument_type).is_some() {
-                    return Err(ArgumentError::DuplicateArgument.to_parse_error(None));
-                }
+                let argument = Function::argument(context)?;
+                final_span = final_span.merge(&argument.span);
+                arguments.push(argument);
 
-                if let Some(Token::Comma) = context.stream.peek_token::<1>()[0] {
+                if let Some((Token::Comma, span)) = &context.stream.peek::<1>()[0] {
+                    final_span = final_span.merge(span);
                     context.stream.read::<1>();
                 } else {
                     context.stream.reset_peek();
                     break;
                 }
             }
+
+            Ok(Some(arguments.to_spanned(final_span)))
         } else {
             context.stream.reset_peek();
+            Ok(None)
         }
-
-        Ok(arguments)
     }
 
-    fn argument(context: &mut ParseContext) -> ParseResult<(Identifier, Type), ArgumentError> {
+    fn argument(context: &mut ParseContext) -> ParseResult<Argument, ArgumentError> {
         let identifier = Identifier::parse(context).to_parse_result()?;
-        let associated_type = match &context.stream.read::<1>()[0] {
+        match &context.stream.read::<1>()[0] {
             Some((token, span)) => match token {
-                Token::Colon => Type::parse(context).to_parse_result()?,
+                Token::Colon => {
+                    let associated_type = Type::parse(context).to_parse_result()?;
+                    let span = identifier.span.merge(span).merge(&associated_type.span);
 
-                _ => return Err(ParseError::unexpected_token(span.clone())),
+                    Ok(Argument {
+                        identifier,
+                        associated_type,
+                        span,
+                    })
+                }
+
+                _ => Err(ParseError::unexpected_token(span.clone())),
             },
-            None => return Err(ParseError::EndOfFile),
-        };
-        Ok((identifier, associated_type))
+            None => Err(ParseError::EndOfFile),
+        }
     }
 }
 

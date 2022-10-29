@@ -4,7 +4,7 @@ use crate::source_files::source_files;
 
 pub fn lex_files(files: Option<&Vec<PathBuf>>) {
     let sources = source_files(files);
-    
+
     for file_path in sources {
         let _file = read_to_string(&file_path).unwrap();
 

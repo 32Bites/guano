@@ -1,7 +1,10 @@
 use guano_lexer::Token;
 use serde::{Deserialize, Serialize};
 
-use crate::parser::ParseContext;
+use crate::parser::{
+    token_stream::{Spanned, ToSpanned},
+    ParseContext,
+};
 
 use super::{Bitwise, Factor, Logical, Operator, ParseOperator, Term};
 
@@ -28,11 +31,10 @@ impl AssignmentOperator {
 }
 
 impl ParseOperator for AssignmentOperator {
-    fn parse(context: &mut ParseContext) -> Option<Self> {
+    fn parse(context: &mut ParseContext) -> Option<Spanned<Self>> {
         Some(match &context.stream.peek_token::<3>() {
             [Some(Token::Equals), ..] => {
-                context.stream.read::<1>();
-                AssignmentOperator::Assign
+                AssignmentOperator::Assign.to_spanned(context.stream.read_span::<1>()[0].clone()?)
             }
             [Some(token), Some(Token::Equals), _] => {
                 let operator = match token {
@@ -49,9 +51,7 @@ impl ParseOperator for AssignmentOperator {
                     }
                 };
 
-                context.stream.read::<2>();
-
-                operator
+                operator.to_spanned(context.stream.read_span_combined::<2>()?)
             }
             [Some(first), Some(second), Some(Token::Equals)] => {
                 let operator = match (first, second) {
@@ -70,8 +70,7 @@ impl ParseOperator for AssignmentOperator {
                         return None;
                     }
                 };
-                context.stream.read::<3>();
-                operator
+                operator.to_spanned(context.stream.read_span_combined::<3>()?)
             }
             _ => {
                 context.stream.reset_peek();

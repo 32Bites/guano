@@ -1,5 +1,5 @@
 use guano_lexer::Token;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::parser::{
@@ -8,6 +8,7 @@ use crate::parser::{
     expression::{Expression, ExpressionError},
     identifier::IdentifierError,
     operator::{Assignment, ParseOperator},
+    token_stream::{MergeSpan, Span, Spannable, Spanned},
     Parse, ParseContext,
 };
 
@@ -19,58 +20,72 @@ use super::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Statement {
+    pub kind: StatementKind,
+    pub span: Span,
+}
+
+impl Spannable for Statement {
+    fn get_span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Statement {
+pub enum StatementKind {
     Variable(Variable),
     Expression(Expression),
     Return(Option<Expression>),
     Assignment {
         left: Expression,
-        operator: Assignment,
+        operator: Spanned<Assignment>,
         right: Expression,
     },
     ForLoop(ForLoop),
     WhileLoop(WhileLoop),
     Conditional(Conditional),
-    Empty,
 }
 
 impl std::fmt::Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Statement::Variable(v) => v.fmt(f)?,
-            Statement::Expression(e) => e.fmt(f)?,
-            Statement::Return(r) => {
+        match &self.kind {
+            StatementKind::Variable(v) => v.fmt(f)?,
+            StatementKind::Expression(e) => e.fmt(f)?,
+            StatementKind::Return(r) => {
                 f.write_str("return")?;
                 if let Some(r) = r {
                     write!(f, " {r}")?;
                 }
             }
-            Statement::Assignment {
+            StatementKind::Assignment {
                 left,
                 operator,
                 right,
             } => write!(f, "{left} {operator} {right}")?,
-            Statement::Empty => return Ok(()),
-            Statement::ForLoop(fl) => return fl.fmt(f),
-            Statement::Conditional(c) => return c.fmt(f),
-            Statement::WhileLoop(w) => return w.fmt(f),
+            StatementKind::ForLoop(fl) => return fl.fmt(f),
+            StatementKind::Conditional(c) => return c.fmt(f),
+            StatementKind::WhileLoop(w) => return w.fmt(f),
         }
 
         f.write_str(";")
     }
 }
 
-impl Parse<StatementError> for Statement {
-    fn parse(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
-        let statement = match &context.stream.peek_token::<1>()[0] {
-            Some(token) => match token {
+impl Parse<StatementError, Result<Statement, Span>> for Statement {
+    fn parse(context: &mut ParseContext) -> ParseResult<Result<Statement, Span>, StatementError> {
+        let statement = match &context.stream.peek::<1>()[0] {
+            Some((token, span)) => match token {
                 Token::KeyVar | Token::KeyLet => Statement::variable(context),
                 Token::KeyReturn => Statement::return_(context),
-                Token::Semicolon => Statement::empty(context),
-                Token::KeyIf => return Statement::if_(context),
-                Token::KeyFor => return Statement::for_(context),
-                Token::KeyWhile => return Statement::while_(context),
+                Token::Semicolon => {
+                    context.stream.read::<1>();
+
+                    return Ok(Err(span.clone()));
+                }
+                Token::KeyIf => return Statement::if_(context).map(|s| Ok(s)),
+                Token::KeyFor => return Statement::for_(context).map(|s| Ok(s)),
+                Token::KeyWhile => return Statement::while_(context).map(|s| Ok(s)),
                 _ => Statement::expression_or_assignment(context),
             },
             None => Err(ParseError::EndOfFile),
@@ -78,7 +93,7 @@ impl Parse<StatementError> for Statement {
 
         match &context.stream.read::<1>()[0] {
             Some((token, span)) => match token {
-                Token::Semicolon => Ok(statement),
+                Token::Semicolon => Ok(Ok(statement)),
                 _ => Err(ParseError::unexpected_token(span.clone())),
             },
             None => Err(ParseError::EndOfFile),
@@ -88,21 +103,10 @@ impl Parse<StatementError> for Statement {
 
 impl Statement {
     fn variable(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
-        Ok(Statement::Variable(
-            Variable::parse(context).to_parse_result()?,
-        ))
-    }
+        let v = Variable::parse(context).to_parse_result()?;
+        let kind = StatementKind::Variable(v.value);
 
-    fn empty(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
-        context.stream.reset_peek();
-
-        while let [Some(Token::Semicolon), Some(Token::Semicolon)] =
-            context.stream.peek_token::<2>()
-        {
-            context.stream.read::<1>();
-        }
-        context.stream.reset_peek();
-        Ok(Statement::Empty)
+        Ok(Statement { kind, span: v.span })
     }
 
     fn expression_or_assignment(
@@ -110,42 +114,88 @@ impl Statement {
     ) -> ParseResult<Statement, StatementError> {
         context.stream.reset_peek();
         let left = Expression::parse(context).to_parse_result()?;
+        let mut final_kind = left.span.clone();
+
         if let Some(operator) = Assignment::parse(context) {
+            final_kind = final_kind.merge(&operator.span);
+
             let right = Expression::parse(context).to_parse_result()?;
-            Ok(Statement::Assignment {
+            final_kind = final_kind.merge(&right.span);
+
+            let kind = StatementKind::Assignment {
                 left,
                 operator,
                 right,
+            };
+
+            Ok(Statement {
+                kind,
+                span: final_kind,
             })
         } else {
-            Ok(Statement::Expression(left))
+            let kind = StatementKind::Expression(left);
+
+            Ok(Statement {
+                kind,
+                span: final_kind,
+            })
         }
     }
 
     fn if_(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
-        Ok(Statement::Conditional(Conditional::parse(context)?))
+        let conditional = Conditional::parse(context)?;
+        let kind = StatementKind::Conditional(conditional.value);
+
+        Ok(Statement {
+            kind,
+            span: conditional.span,
+        })
     }
 
     fn for_(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
-        Ok(Statement::ForLoop(ForLoop::parse(context)?))
+        let floop = ForLoop::parse(context)?;
+        let kind = StatementKind::ForLoop(floop.value);
+
+        Ok(Statement {
+            kind,
+            span: floop.span,
+        })
     }
 
     fn while_(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
-        Ok(Statement::WhileLoop(WhileLoop::parse(context)?))
+        let wloop = WhileLoop::parse(context)?;
+        let kind = StatementKind::WhileLoop(wloop.value);
+
+        Ok(Statement {
+            kind,
+            span: wloop.span,
+        })
     }
 
     fn return_(context: &mut ParseContext) -> ParseResult<Statement, StatementError> {
         match &context.stream.read::<1>()[0] {
-            Some((Token::KeyReturn, _)) => {
+            Some((Token::KeyReturn, span)) => {
+                let mut final_span = span.clone();
+
                 let expression = match context.stream.peek_token::<1>()[0] {
                     Some(Token::Semicolon) => {
                         context.stream.reset_peek();
                         None
                     }
-                    _ => Some(Expression::parse(context).to_parse_result()?),
+                    _ => {
+                        let expression = Expression::parse(context).to_parse_result()?;
+                        final_span = final_span.merge(&expression.span);
+
+                        Some(expression)
+                    }
                 };
 
-                Ok(Statement::Return(expression))
+                let kind = StatementKind::Return(expression);
+
+                Ok(Statement {
+                    kind,
+                    span: final_span,
+                })
             }
             Some((_, span)) => Err(ParseError::unexpected_token(span.clone())),
             None => Err(ParseError::EndOfFile),

@@ -1,11 +1,11 @@
 use crate::parser::{
     error::ParseResult,
-    expression::simplify::Simplify,
     operator::{ParseOperator, Term},
+    token_stream::MergeSpan,
     ParseContext,
 };
 
-use super::{factor::parse_factor, BinaryExpression, Expression, ExpressionError};
+use super::{factor::parse_factor, BinaryExpression, Expression, ExpressionError, ExpressionKind};
 
 pub fn parse_term(context: &mut ParseContext) -> ParseResult<Expression, ExpressionError> {
     let mut left = parse_factor(context)?;
@@ -13,8 +13,10 @@ pub fn parse_term(context: &mut ParseContext) -> ParseResult<Expression, Express
     while let Some(operator) = Term::parse(context) {
         let right = parse_factor(context)?;
 
-        left = Expression::Term(BinaryExpression::new(operator, left, right))
-            .simplify_term(context.simplified_expressions);
+        let span = left.span.merge(&operator.span).merge(&right.span);
+        let kind = ExpressionKind::Term(BinaryExpression::new(operator, left, right));
+
+        left = Expression::new(kind, span);
     }
 
     Ok(left)

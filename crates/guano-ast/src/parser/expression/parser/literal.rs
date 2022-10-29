@@ -1,21 +1,19 @@
-use std::{cmp::Ordering, str::FromStr};
+use std::str::FromStr;
 
-use bigdecimal::{
-    num_bigint::{ParseBigIntError, ToBigInt},
-    BigDecimal, ParseBigDecimalError, ToPrimitive, Zero,
-};
+use bigdecimal::{num_bigint::ParseBigIntError, BigDecimal, ParseBigDecimalError};
+
 use guano_lexer::{escape_char::Token as EscapeToken, logos::Logos, Token};
 use num::BigInt;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::parser::{
     error::{ParseError, ParseResult, ToParseError},
-    typing::Type,
+    token_stream::{Spanned, ToSpanned},
     Parse, ParseContext,
 };
 
-use super::Expression;
+use super::{Expression, ExpressionKind};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -41,224 +39,8 @@ impl std::fmt::Display for Literal {
     }
 }
 
-impl Literal {
-    pub fn to_expression(self) -> Expression {
-        Expression::Literal(self)
-    }
-
-    pub fn bs_left(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => {
-                match (lhs.to_i128(), rhs.to_i128()) {
-                    (Some(lhs), Some(rhs)) => Literal::Integer((lhs << rhs).to_bigint()?),
-                    _ => match (lhs.to_u128(), rhs.to_u128()) {
-                        (Some(lhs), Some(rhs)) => Literal::Integer((lhs << rhs).to_bigint()?),
-                        _ => return None,
-                    },
-                }
-            }
-            _ => return None,
-        })
-    }
-
-    pub fn bs_right(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => {
-                match (lhs.to_i128(), rhs.to_i128()) {
-                    (Some(lhs), Some(rhs)) => Literal::Integer((lhs >> rhs).to_bigint()?),
-                    _ => match (lhs.to_u128(), rhs.to_u128()) {
-                        (Some(lhs), Some(rhs)) => Literal::Integer((lhs >> rhs).to_bigint()?),
-                        _ => return None,
-                    },
-                }
-            }
-            _ => return None,
-        })
-    }
-
-    pub fn b_and(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs & rhs),
-            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(lhs & rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn b_or(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs | rhs),
-            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(lhs | rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn b_xor(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs ^ rhs),
-            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(lhs ^ rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn l_and(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(*lhs && *rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn l_or(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => Literal::Boolean(*lhs || *rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn modu(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::FloatingPoint(lhs), Literal::FloatingPoint(rhs)) => {
-                Literal::FloatingPoint(lhs % rhs)
-            }
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs % rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn mul(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::FloatingPoint(lhs), Literal::FloatingPoint(rhs)) => {
-                Literal::FloatingPoint(lhs * rhs)
-            }
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs * rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn div(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::FloatingPoint(lhs), Literal::FloatingPoint(rhs)) => {
-                Literal::FloatingPoint(lhs / rhs)
-            }
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs / rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn add(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::FloatingPoint(lhs), Literal::FloatingPoint(rhs)) => {
-                Literal::FloatingPoint(lhs + rhs)
-            }
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs + rhs),
-            (Literal::String(lhs), Literal::String(rhs)) => Literal::String(lhs.clone() + &rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn sub(&self, rhs: &Self) -> Option<Self> {
-        Some(match (self, rhs) {
-            (Literal::FloatingPoint(lhs), Literal::FloatingPoint(rhs)) => {
-                Literal::FloatingPoint(lhs - rhs)
-            }
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => Literal::Integer(lhs - rhs),
-            _ => return None,
-        })
-    }
-
-    pub fn ordering(&self, rhs: &Self) -> Option<Ordering> {
-        match (self, rhs) {
-            (Literal::String(lhs), Literal::String(rhs)) if lhs == rhs => Some(Ordering::Equal),
-            (Literal::Character(lhs), Literal::Character(rhs)) => lhs.partial_cmp(rhs),
-            (Literal::Integer(lhs), Literal::Integer(rhs)) => lhs.partial_cmp(rhs),
-            (Literal::FloatingPoint(lhs), Literal::FloatingPoint(rhs)) => lhs.partial_cmp(rhs),
-            (Literal::Boolean(lhs), Literal::Boolean(rhs)) => lhs.partial_cmp(rhs),
-            (Literal::Nil, Literal::Nil) => Some(Ordering::Equal),
-            _ => None,
-        }
-    }
-
-    pub fn eq(&self, rhs: &Self) -> Option<bool> {
-        self.ordering(rhs).map(|o| o.is_eq())
-    }
-
-    pub fn ne(&self, rhs: &Self) -> Option<bool> {
-        self.ordering(rhs).map(|o| o.is_ne())
-    }
-
-    pub fn lt(&self, rhs: &Self) -> Option<bool> {
-        self.ordering(rhs).map(|o| o.is_lt())
-    }
-
-    pub fn gt(&self, rhs: &Self) -> Option<bool> {
-        self.ordering(rhs).map(|o| o.is_gt())
-    }
-
-    pub fn le(&self, rhs: &Self) -> Option<bool> {
-        self.ordering(rhs).map(|o| o.is_le())
-    }
-
-    pub fn ge(&self, rhs: &Self) -> Option<bool> {
-        self.ordering(rhs).map(|o| o.is_ge())
-    }
-
-    pub fn cast(&self, cast_to: &Type) -> Option<Self> {
-        match cast_to {
-            Type::String => match self {
-                Literal::String(s) => Some(Literal::String(s.clone())),
-                Literal::Character(c) => Some(Literal::String(format!("{c}"))),
-                Literal::Integer(i) => Some(Literal::String(format!("{i}"))),
-                Literal::FloatingPoint(f) => Some(Literal::String(format!("{f}"))),
-                Literal::Boolean(b) => Some(Literal::String(format!("{b}"))),
-                Literal::Nil => Some(Literal::String("nil".into())),
-            },
-            Type::Character => match self {
-                Literal::Character(c) => Some(Literal::Character(c.clone())),
-                Literal::Integer(i) => Some(Literal::Character(
-                    i.to_u32().and_then(|u| char::from_u32(u))?,
-                )),
-                _ => None,
-            },
-            Type::Integer => match self {
-                Literal::Character(c) => Some(Literal::Integer((*c as u32).into())),
-                Literal::Boolean(b) => Some(Literal::Integer((*b as u8).into())),
-                Literal::Nil => Some(Literal::Integer(0.into())),
-                Literal::FloatingPoint(f) => {
-                    if f.is_integer() {
-                        let (integer, _) = f.as_bigint_and_exponent();
-                        Some(Literal::Integer(integer))
-                    } else {
-                        None
-                    }
-                }
-                _ => {
-                    // TODO?
-                    None
-                }
-            },
-            Type::UnsignedInteger => {
-                // TODO?
-                None
-            }
-            Type::Boolean => match self {
-                Literal::String(s) => Some(Literal::Boolean(s.len() > 0)),
-                Literal::Character(_) => Some(Literal::Boolean(true)),
-                Literal::Integer(i) => Some(Literal::Boolean(!i.is_zero())),
-                Literal::FloatingPoint(f) => Some(Literal::Boolean(!f.is_zero())),
-                Literal::Boolean(b) => Some(Literal::Boolean(*b)),
-                Literal::Nil => Some(Literal::Boolean(false)),
-            },
-            Type::FloatingPoint => match self {
-                Literal::Nil => Some(Literal::FloatingPoint(0.into())),
-                Literal::Integer(i) => Some(Literal::FloatingPoint(i.clone().into())),
-                _ => None,
-            },
-            Type::Custom(_) | Type::List(_) | Type::Tuple(_) => None,
-        }
-    }
-}
-
-impl Parse<LiteralError> for Literal {
-    fn parse(context: &mut ParseContext) -> ParseResult<Literal, LiteralError> {
+impl Parse<LiteralError, Spanned<Literal>> for Literal {
+    fn parse(context: &mut ParseContext) -> ParseResult<Spanned<Literal>, LiteralError> {
         let literal = match &context.stream.read::<1>()[0] {
             Some((token, span)) => match token {
                 Token::LitString(string) => {
@@ -272,7 +54,7 @@ impl Parse<LiteralError> for Literal {
                         }
                     }
 
-                    Literal::String(parsed_string)
+                    Literal::String(parsed_string).to_spanned(span.clone())
                 }
 
                 Token::LitChar(character) => {
@@ -290,7 +72,9 @@ impl Parse<LiteralError> for Literal {
                                 );
                             }
                             (Some(token), None) => match token.char() {
-                                Some(character) => Literal::Character(character),
+                                Some(character) => {
+                                    Literal::Character(character).to_spanned(span.clone())
+                                }
                                 None => {
                                     return Err(
                                         LiteralError::InvalidCharacter.to_parse_error(span.clone())
@@ -310,10 +94,10 @@ impl Parse<LiteralError> for Literal {
                             return Err(e.to_parse_error(span.clone()).convert());
                         }
                     };
-                    Literal::Integer(integer)
+                    Literal::Integer(integer).to_spanned(span.clone())
                 }
 
-                Token::LitBool(boolean) => Literal::Boolean(*boolean),
+                Token::LitBool(boolean) => Literal::Boolean(*boolean).to_spanned(span.clone()),
 
                 Token::LitFloat(float) => {
                     let float_string: String = float.chars().filter(|c| *c != '_').collect();
@@ -323,10 +107,10 @@ impl Parse<LiteralError> for Literal {
                             return Err(e.to_parse_error(span.clone()).convert());
                         }
                     };
-                    Literal::FloatingPoint(float)
+                    Literal::FloatingPoint(float).to_spanned(span.clone())
                 }
 
-                Token::LitNil => Literal::Nil,
+                Token::LitNil => Literal::Nil.to_spanned(span.clone()),
                 _ => {
                     return Err(ParseError::unexpected_token(span.clone()));
                 }
@@ -335,6 +119,12 @@ impl Parse<LiteralError> for Literal {
         };
 
         Ok(literal)
+    }
+}
+
+impl Into<Expression> for Spanned<Literal> {
+    fn into(self) -> Expression {
+        Expression::new(ExpressionKind::Literal(self.value), self.span)
     }
 }
 

@@ -1,13 +1,14 @@
 use std::mem;
 
 use convert_case::{Boundary, Case, Casing, StateConverter};
-use guano_lexer::{Token, logos::Logos};
+use guano_lexer::{logos::Logos, Token};
 use serde::{de::Visitor, Deserialize, Serialize};
 
 use crate::empty_error;
 
 use super::{
     error::{ParseError, ParseResult},
+    token_stream::{Span, Spannable},
     Parse, ParseContext,
 };
 
@@ -24,14 +25,16 @@ fn identify_casing(string: &str) -> Option<Case> {
 pub struct Identifier {
     value: String,
     casing: Option<Case>,
+    pub span: Span,
 }
 
 impl Identifier {
-    pub fn new<S: Into<String>>(value: S) -> Self {
+    pub fn new<S: Into<String>>(value: S, span: Span) -> Self {
         let value = value.into();
         Self {
             casing: identify_casing(&value),
             value,
+            span,
         }
     }
 
@@ -45,7 +48,7 @@ impl Identifier {
 
     /// Avoids case-value mismatches.
     pub fn update_value<S: Into<String>>(&mut self, value: S) {
-        let _ = mem::replace(self, Identifier::new(value));
+        let _ = mem::replace(self, Identifier::new(value, None));
     }
 
     /// Avoids case-value mismatches.
@@ -59,13 +62,19 @@ impl Identifier {
 
 impl<S: Into<String>> From<S> for Identifier {
     fn from(s: S) -> Self {
-        Self::new(s)
+        Self::new(s, None)
     }
 }
 
 impl AsRef<str> for Identifier {
     fn as_ref(&self) -> &str {
         &self.value
+    }
+}
+
+impl Spannable for Identifier {
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 }
 
@@ -94,7 +103,9 @@ impl Casing<String> for Identifier {
 impl Parse<IdentifierError> for Identifier {
     fn parse(parser: &mut ParseContext) -> ParseResult<Identifier, IdentifierError> {
         match &parser.stream.read::<1>()[0] {
-            Some((Token::Identifier(identifier), _)) => Ok(identifier.into()),
+            Some((Token::Identifier(identifier), span)) => {
+                Ok(Identifier::new(identifier, span.clone()))
+            }
             Some((_, span)) => Err(ParseError::unexpected_token(span.clone())),
             None => Err(ParseError::EndOfFile),
         }
@@ -144,7 +155,7 @@ impl<'de> Visitor<'de> for IdentifierVisitor {
 
     fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
         if let Some(Token::Identifier(identifier)) = Token::lexer(v).next() {
-            Ok(Identifier::new(identifier))
+            Ok(Identifier::new(identifier, None))
         } else {
             Err(E::custom("string does not fit the identifier regex"))
         }

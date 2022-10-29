@@ -1,9 +1,12 @@
 use guano_lexer::Token;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::parser::ParseContext;
+use crate::parser::{
+    token_stream::{Spanned, ToSpanned},
+    ParseContext,
+};
 
-use super::{ParseOperator, Operator};
+use super::{Operator, ParseOperator};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -22,7 +25,7 @@ impl std::fmt::Display for BitwiseOperator {
 }
 
 impl ParseOperator for BitwiseOperator {
-    fn parse(context: &mut ParseContext) -> Option<Self> {
+    fn parse(context: &mut ParseContext) -> Option<Spanned<Self>> {
         BitwiseParser::parse(context).or_else(|| ShiftParser::parse(context))
     }
 }
@@ -54,7 +57,7 @@ impl Operator for BitwiseOperator {
 pub struct BitwiseParser;
 
 impl ParseOperator<BitwiseOperator> for BitwiseParser {
-    fn parse(context: &mut ParseContext) -> Option<BitwiseOperator> {
+    fn parse(context: &mut ParseContext) -> Option<Spanned<BitwiseOperator>> {
         let operator = match context.stream.peek_token::<2>() {
             [Some(Token::Pipe), o] if !matches!(o, Some(Token::Pipe)) => BitwiseOperator::Or,
             [Some(Token::Ampersand), o] if !matches!(o, Some(Token::Ampersand)) => {
@@ -66,16 +69,16 @@ impl ParseOperator<BitwiseOperator> for BitwiseParser {
                 return None;
             }
         };
-        context.stream.read::<1>();
+        let span = context.stream.read_span::<1>()[0].clone()?;
 
-        Some(operator)
+        Some(operator.to_spanned(span))
     }
 }
 
 pub struct ShiftParser;
 
 impl ParseOperator<BitwiseOperator> for ShiftParser {
-    fn parse(context: &mut ParseContext) -> Option<BitwiseOperator> {
+    fn parse(context: &mut ParseContext) -> Option<Spanned<BitwiseOperator>> {
         let operator = match context.stream.peek_token::<2>() {
             [Some(Token::LessThan), Some(Token::LessThan)] => BitwiseOperator::ShiftLeft,
             [Some(Token::GreaterThan), Some(Token::GreaterThan)] => BitwiseOperator::ShiftRight,
@@ -84,8 +87,8 @@ impl ParseOperator<BitwiseOperator> for ShiftParser {
                 return None;
             }
         };
-        context.stream.read::<2>();
+        let span = context.stream.read_span_combined::<2>()?;
 
-        Some(operator)
+        Some(operator.to_spanned(span))
     }
 }

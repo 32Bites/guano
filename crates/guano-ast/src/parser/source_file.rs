@@ -1,18 +1,19 @@
 use guano_lexer::Token;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::{
     error::{ParseError, ParseResult, ToParseResult},
     function::{Function, FunctionError},
-    statement::{variable::Variable, Statement, StatementError},
+    statement::{variable::Variable, Statement, StatementError, StatementKind},
+    token_stream::{Spanned, ToSpanned},
     Parse, ParseContext,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceFile {
-    pub global_variables: Vec<Variable>,
-    pub functions: Vec<Function>
+    pub global_variables: Vec<Spanned<Variable>>,
+    pub functions: Vec<Function>,
 }
 
 impl std::fmt::Display for SourceFile {
@@ -38,12 +39,13 @@ impl Parse<SourceFileError> for SourceFile {
                     Token::KeyLet | Token::KeyVar => {
                         context.stream.reset_peek();
 
-                        if let Statement::Variable(variable) =
-                            Statement::parse(context).to_parse_result()?
-                        {
-                            global_variables.push(variable);
-                        } else {
-                            unreachable!()
+                        match Statement::parse(context).to_parse_result()? {
+                            Ok(Statement {
+                                kind: StatementKind::Variable(variable),
+                                span,
+                            }) => global_variables.push(variable.to_spanned(span)),
+                            Ok(_) => unreachable!(),
+                            Err(_) => {}
                         }
                     }
 
@@ -59,7 +61,10 @@ impl Parse<SourceFileError> for SourceFile {
             }
         }
 
-        Ok(SourceFile { global_variables, functions })
+        Ok(SourceFile {
+            global_variables,
+            functions,
+        })
     }
 }
 
