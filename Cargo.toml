@@ -9,8 +9,7 @@ edition = "2021"
 members = ["crates/*"]
 
 [features]
-lexer = ["dep:guano-lexer"]
-ast = ["lexer", "dep:guano-ast"]
+ast = ["dep:guano-ast"]
 bytecode = ["dep:guano-bytecode"]
 runtime = ["bytecode", "dep:guano-runtime"]
 llvm = ["dep:guano-llvm"]
@@ -25,7 +24,6 @@ serde_json = "1.0"
 ptree = { version = "0.4.0", features = ["value"] }
 serde-value = "0.7.0"
 glob = "0.3.0"
-guano-lexer = { path = "./crates/guano-lexer", optional = true }
 guano-ast = { path = "./crates/guano-ast", optional = true }
 guano-bytecode = { path = "./crates/guano-bytecode", optional = true }
 guano-runtime = { path = "./crates/guano-runtime", optional = true }

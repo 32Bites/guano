@@ -1,0 +1,197 @@
+// Comments
+line_comment = @{ "##" ~ (!NEWLINE ~ ANY)* ~ NEWLINE? }
+block_comment = @{ "#$" ~ ( block_comment | (!"$#" ~ ANY) )* ~ "$#" }
+
+capturing_comment = { line_comment | block_comment }
+
+COMMENT = _{ capturing_comment }
+
+// Whitespace
+WHITESPACE = _{ WHITE_SPACE }
+
+// Keywords
+keyword = {
+    "let" | 
+    "var" |
+    "fun" |
+    "class" |
+    "this" |
+    "type" |
+    "import" |
+    "loop" |
+    "for" | 
+    "while" |
+    "in" |
+    "break" |
+    "continue" |
+    "if" |
+    "else" |
+    "return" |
+    "as" |
+    "veto" |
+    "static" |
+    "priv"
+}
+    
+// Declarations
+declaration = { variable_declaration | function_declaration |
+                type_alias_declaration | prototype_declaration |
+                class_declaration | import_declaration }
+
+    variable_declaration = { ( "let" | "var" ) ~ identifier ~
+            (
+                ( declaration_type ~ variable_declaration_value ) | 
+                ( declaration_type ) | ( variable_declaration_value )
+            ) ~ ";" }
+        declaration_type = { ":" ~ type_ }
+        variable_declaration_value = { "=" ~ expression }
+
+    procedure_declaration = { "fun" ~ identifier ~ declaration_type? ~ procedure_declaration_parameters? }
+    procedure_declaration_parameters = { "@" ~ identifier ~ declaration_type ~ ("," ~ identifier ~ declaration_type)* }
+
+    function_declaration = { procedure_declaration ~ block }
+
+    type_alias_declaration = { "type" ~ identifier ~ "=" ~ type_ ~ ";" }
+
+    prototypes = { identifier ~ ( "+" ~ identifier )* }
+    prototype_declaration = {
+        "proto" ~ identifier ~ ( "(" ~ prototypes? ~ ")" )? ~ "{" ~
+            ( prototype_method )* ~ 
+        "}"
+    }
+    prototype_method = {
+        "static"? ~ procedure_declaration ~ ( ";" | block )
+    }
+    class_declaration = { 
+        "class" ~ identifier ~ ("(" ~ identifier? ~ ")")? ~ (":" ~ prototypes)? ~ "{" ~ 
+            (class_property | class_method)* ~
+        "}"
+    }
+    class_property = { ("static" | "priv")? ~ ( "var" | "let" ) ~ identifier ~ declaration_type ~ ";" }
+    class_method = { ("static" | "priv")? ~ function_declaration }
+
+    import_declaration = { "import" ~ string_literal ~ ("as" ~ identifier)? ~ ";" }
+
+
+
+// Statement
+statement = { variable_declaration | return_statement | loop_control | 
+                infinite_loop | for_loop | while_loop | if_statement | 
+                assignment_statement | expression_statement }
+
+    return_statement = { "return" ~ expression? ~ ";" }
+    loop_control = { ("break" | "continue" ) ~ ";" }
+    infinite_loop = { "loop" ~ block }
+    for_loop = { "for" ~ identifier ~ "in" ~ expression ~ block }
+    while_loop = { "while" ~ expression ~ block }
+    if_statement = { "if" ~ expression ~ block ~ else_statement? }
+    else_statement = { "else" ~ (block | if_statement) }
+    assignment_statement = { expression ~ assignment_operator ~ expression ~ ";" }
+        assignment_operator = { "=" | "+=" | "*=" | "/=" | "%=" | "-=" | "^=" | "&=" | "|=" | "<<=" | ">>=" | "&&=" | "||=" }
+    expression_statement = { expression ~ ";" }
+
+// Block
+block = { "{" ~ (statement | block | ";")* ~ "}" }
+
+// Identifier
+identifier = @{ !keyword ~ (("_" | ASCII_ALPHA) ~ ("_" | ASCII_ALPHANUMERIC)* ) }
+value_identifier = { "this" | identifier }
+
+// Type
+type_ = { list_type | tuple_type | primitive_type | custom_type }
+    // Primitive
+    primitive_type = { boolean_type | integer_type | 
+                    unsigned_integer_type | floating_point_type | 
+                    string_type | character_type }
+
+        boolean_type = { "boolean" }
+        integer_type = { "int" }
+        unsigned_integer_type = { "uint" }
+        floating_point_type = { "float" }
+        string_type = { "string" }
+        character_type = { "character" }
+        custom_type = { identifier }
+        list_type = { "[]" ~ type_ }
+        tuple_type = { "(" ~ tuple_type_inner? ~ ")"}
+        tuple_type_inner = { type_ ~ ("," ~ type_)* }
+
+
+// Expression
+expression = { prefix* ~ primary ~ postfix* ~ ( infix ~ prefix* ~ primary ~ postfix* )* }
+    // prefix
+    prefix = _{ negate | not }
+        negate = { "-" }
+        not = { "!" }
+    // infix
+    infix = _{ factor | term | bitwise | relational | logical }
+        factor = { mul | div | modu }
+            mul = { "*" }
+            div = { "/" }
+            modu = { "%" }
+        term = { add | sub }
+            add = { "+" }
+            sub = { "-" }
+        bitwise = { bitshift_left | bitshift_right | bitwise_xor | bitwise_and | bitwise_or  }
+            bitshift_left = { "<<" }
+            bitshift_right = { ">>" }
+            bitwise_xor = { "^" }
+            bitwise_and = { !logical_and ~ "&" }
+            bitwise_or = { !logical_or ~ "|" }
+        relational = { greater_than_eq | greater_than | less_than_eq | less_than | equals | not_equals }
+            greater_than = { ">" }
+            greater_than_eq = { ">=" }
+            less_than = { "<" }
+            less_than_eq = { "<=" }
+            equals = { "==" }
+            not_equals = { "!=" }
+        logical = { logical_and | logical_or }
+            logical_and = { "&&" }
+            logical_or = { "||" }
+    // postfix
+    postfix = _{ index | call | property | cast }
+        call = { "(" ~ list_inner? ~ ")" }
+        index = { "[" ~ expression ~ "]" }
+        property = { "." ~ identifier }
+        cast = { "as" ~ type_ }
+    // Primary expressions
+    primary = _{ literal | grouped | value_identifier | type_ }
+        // Literals
+        literal = { nil_literal | boolean_literal | number_literal | text_literal | collection_literal }
+            boolean_literal = { "true" | "false" }
+            nil_literal = { "nil" }
+            // Numeric (integer and float) literals
+            number_literal = { floating_point | integer }
+                integer = { binary_integer | hexadecial_integer | decimal_integer }
+                    binary_integer = @{ "0b" ~ ASCII_BIN_DIGIT ~ (ASCII_BIN_DIGIT | "_")* }
+                    hexadecial_integer = @{ "0x" ~ ASCII_HEX_DIGIT ~ (ASCII_HEX_DIGIT | "_")* }
+                    decimal_integer = @{ (ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT | "_")*) | ASCII_DIGIT }
+                    // TODO: Octals
+                floating_point = @{ decimal_integer ~ "." ~ decimal_integer }
+            // String and character literals
+            text_literal = { format_string | string_literal | character_literal }
+                text_inner = ${ single_escape | ascii_escape | unicode_escape | (!"\\" ~ ANY) }
+                    single_escape = @{ "\\" ~ ("t" | "r" | "n" | "0" | "\\" | "'" | "\"") }
+                    ascii_escape = @{ "\\x" ~ ASCII_HEX_DIGIT{2} }
+                    unicode_escape = @{ little_unicode_escape | big_unicode_escape }
+                        big_unicode_escape = @{ "\\U" ~ ASCII_HEX_DIGIT{8} }
+                        little_unicode_escape = @{ "\\u" ~ ASCII_HEX_DIGIT{4} }
+                string_literal = ${ "\"" ~ (!("\"" | NEWLINE) ~ text_inner)* ~ "\"" }
+                format_string = { string_literal ~ ":" ~ expression }
+                character_literal = ${ "'" ~ (!("'" | NEWLINE) ~ text_inner) ~ "'" }
+            // Collection literals
+            collection_literal = { list_literal | tuple_literal }
+                // Tuple
+                tuple_inner = { ( expression ~ ("," ~ expression)+ ) | ( expression ~ "," ) }
+                tuple_literal = { "(" ~ tuple_inner? ~ ")" }
+                // List
+                list_inner = { expression ~ ("," ~ expression)* }
+                list_literal = { "[" ~ list_inner? ~ "]" }
+        // Grouped
+        grouped = { "(" ~ expression ~ ")" }
+
+// Source file
+source_file = {
+    SOI ~
+    declaration* ~
+    EOI
+}

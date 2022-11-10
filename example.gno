@@ -31,3 +31,20 @@ fun add: float @ first: float, second: uint {
 
 let test = (5 + 6) << 1 >> 2 + ree(1)[0][1].ree.ree().mee(1, 2) as []uint + (1, 2) - (1 + 4,) + (1,);
 let i = 1;
+
+proto something {
+    fun print;
+}
+
+proto somethingElse(something) {
+}
+
+class first_class {
+    priv fun main: string @ first: ree {
+        return "";
+    }
+}
+
+class my_class(first_class): something {
+    
+}
