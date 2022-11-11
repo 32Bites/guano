@@ -32,6 +32,31 @@ impl Type {
 
                 TypeKind::Tuple(types)
             }
+            Rule::function_type => {
+                let mut inner = pair.into_inner();
+                let arguments = {
+                    let mut arguments = vec![];
+
+                    while let Some(next) = inner.peek() {
+                        if let Rule::type_ = next.as_rule() {
+                            inner.next();
+
+                            arguments.push(Type::parse(next, input.clone()));
+                        } else {
+                            break;
+                        }
+                    }
+
+                    arguments
+                };
+
+                let return_type = inner.next().map(|p| Box::new(Type::parse(p, input)));
+
+                TypeKind::Function {
+                    arguments,
+                    return_type,
+                }
+            }
             Rule::custom_type => TypeKind::Custom(pair.into_span_str(input)),
             Rule::boolean_type => TypeKind::Boolean,
             Rule::integer_type => TypeKind::Integer,
@@ -60,16 +85,17 @@ pub enum TypeKind {
     Custom(SpanStr),
     List(Box<Type>),
     Tuple(Vec<Type>),
+    Function {
+        arguments: Vec<Type>,
+        return_type: Option<Box<Type>>,
+    },
 }
 
 #[cfg(test)]
 mod tests {
     use pest::Parser;
 
-    use super::{
-        super::parser::{InternalParser, Rule},
-        // Type,
-    };
+    use super::super::parser::{InternalParser, Rule};
 
     #[test]
     fn test_type() {
@@ -89,7 +115,7 @@ mod tests {
         for ty in types {
             let _res = InternalParser::parse(Rule::type_, ty).unwrap();
 
-/*             for pair in res {
+            /*             for pair in res {
                 let _ty = Type::parse(pair, todo!());
                 println!("{ty:?}");
             } */

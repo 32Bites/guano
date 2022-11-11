@@ -8,6 +8,11 @@ $#
 
 let global_name = "This Global Variable Was Created By Noah";
 
+type function_type_example = fun: string; ## function with no parameters but returns a string.
+type function_type_example_2 = fun([]string, uint): string; ## function that returns a string while accepting a slice of strings, and a uint.
+type function_type_example_3 = fun(string, uint); ## function that has no return value but accepts a string and a uint.
+type_function_type_example_4 = fun; ## function that has no parameters or return value.
+
 ## Entrypoint
 fun main @ args: []string {
     let name: string = "Noah";

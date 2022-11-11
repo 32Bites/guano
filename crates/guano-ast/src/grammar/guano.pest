@@ -98,7 +98,7 @@ identifier = @{ !keyword ~ (("_" | ASCII_ALPHA) ~ ("_" | ASCII_ALPHANUMERIC)* ) 
 value_identifier = { "this" | identifier }
 
 // Type
-type_ = { list_type | tuple_type | primitive_type | custom_type }
+type_ = { function_type | list_type | tuple_type | primitive_type | custom_type }
     // Primitive
     primitive_type = { boolean_type | integer_type | 
                     unsigned_integer_type | floating_point_type | 
@@ -114,6 +114,7 @@ type_ = { list_type | tuple_type | primitive_type | custom_type }
         list_type = { "[]" ~ type_ }
         tuple_type = { "(" ~ tuple_type_inner? ~ ")"}
         tuple_type_inner = { type_ ~ ("," ~ type_)* }
+        function_type = { "fun" ~ ("(" ~ ( type_ ~ ( "," ~ type_)* )? ~ ")")? ~ declaration_type? }
 
 
 // Expression

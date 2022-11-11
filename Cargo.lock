@@ -253,6 +253,7 @@ dependencies = [
  "guano-jit",
  "guano-llvm",
  "guano-runtime",
+ "guano-semantics",
  "ptree",
  "serde-value",
  "serde_json",
@@ -292,6 +293,13 @@ dependencies = [
 [[package]]
 name = "guano-runtime"
 version = "0.1.0"
+
+[[package]]
+name = "guano-semantics"
+version = "0.1.0"
+dependencies = [
+ "guano-ast",
+]
 
 [[package]]
 name = "hashbrown"
