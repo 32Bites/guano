@@ -10,7 +10,7 @@ COMMENT = _{ capturing_comment }
 WHITESPACE = _{ WHITE_SPACE }
 
 // Keywords
-keyword = {
+keyword = { (
     "let" | 
     "var" |
     "fun" |
@@ -30,7 +30,8 @@ keyword = {
     "as" |
     "veto" |
     "static" |
-    "priv"
+    "priv" ) ~
+        !(("_" | ASCII_ALPHANUMERIC))
 }
     
 // Declarations
