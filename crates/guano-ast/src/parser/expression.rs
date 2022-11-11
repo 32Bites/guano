@@ -2,7 +2,7 @@ use super::{
     literal::{Literal, LiteralError},
     operator::{BinaryOperator, Operator, UnaryOperator},
     parser::Rule,
-    typing::{Type, TypeKind}, span::{SpanStr, Span, IntoSpan},
+    typing::Type, span::{SpanStr, Span, IntoSpan},
 };
 use owning_ref::RcRef;
 use pest::{
@@ -267,11 +267,7 @@ pub enum ExpressionError {
 mod tests {
     use pest::Parser;
 
-    use crate::parser::{
-        expression::{self, Expression},
-        InternalParser,
-    };
-
+    use crate::parser::InternalParser;
     use super::super::Rule;
     #[test]
     fn test_expression() {
@@ -279,7 +275,7 @@ mod tests {
         // let expression = "(1 as int)()";
 
         let mut res = InternalParser::parse(Rule::expression, expression).unwrap();
-        let next = res.next().unwrap();
+        let _next = res.next().unwrap();
 
         // let ty = Expression::parse(next.into_inner()).unwrap();
         // println!("{ty:#?}");

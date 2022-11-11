@@ -6,7 +6,7 @@ use owning_ref::RcRef;
 use pest::iterators::Pair;
 use thiserror::Error;
 
-use super::{expression::{Expression, ExpressionError}, parser::Rule, span::Span};
+use super::{expression::{Expression, ExpressionError}, parser::Rule};
 
 #[derive(Debug, Clone)]
 pub enum Literal {
@@ -194,7 +194,7 @@ impl From<Pair<'_, Rule>> for Integer {
 mod tests {
     use pest::Parser;
 
-    use crate::parser::{literal::Literal, InternalParser, Rule};
+    use crate::parser::{InternalParser, Rule};
 
     #[test]
     fn test_literal() {
@@ -226,7 +226,7 @@ mod tests {
         for expression in expressions {
             if let Ok(res) = InternalParser::parse(Rule::literal, expression) {
                 println!("Success: {expression}");
-                for pair in res {
+                for _pair in res {
 /*                     let ty = Literal::try_from(pair);
                     println!("\t{ty:?}"); */
                 }

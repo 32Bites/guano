@@ -1,7 +1,7 @@
 use owning_ref::RcRef;
 use pest::{iterators::Pair};
 
-use super::{statement::{Statement, StatementError}, parser::Rule, span::{Span, SpanStr, IntoSpan}};
+use super::{statement::{Statement, StatementError}, parser::Rule, span::{Span, IntoSpan}};
 
 #[derive(Debug, Clone)]
 pub struct Block {

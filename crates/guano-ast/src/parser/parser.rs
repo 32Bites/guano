@@ -2,7 +2,6 @@ use std::{collections::HashMap, ffi::OsString, rc::Rc};
 
 use codespan::{FileId, Files};
 use owning_ref::RcRef;
-use pest::error::Error as PestError;
 use pest_derive::Parser;
 
 use super::source_file::{SourceFile, SourceFileError};
@@ -23,6 +22,10 @@ impl Parser {
             files: Files::new(),
             syntax_trees: HashMap::new(),
         }
+    }
+
+    pub fn files(&self) -> &Files<RcRef<str>> {
+        &self.files
     }
 
     pub fn file(

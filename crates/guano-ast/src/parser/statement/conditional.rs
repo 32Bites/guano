@@ -1,5 +1,5 @@
 use owning_ref::RcRef;
-use pest::{iterators::Pair, pratt_parser::Op};
+use pest::iterators::Pair;
 
 use crate::parser::{block::Block, expression::Expression, Rule, span::{Span, IntoSpan}};
 

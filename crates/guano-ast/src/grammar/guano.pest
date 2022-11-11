@@ -154,7 +154,7 @@ expression = { prefix* ~ primary ~ postfix* ~ ( infix ~ prefix* ~ primary ~ post
         property = { "." ~ identifier }
         cast = { "as" ~ type_ }
     // Primary expressions
-    primary = _{ literal | grouped | value_identifier | type_ }
+    primary = _{ literal | grouped | value_identifier }
         // Literals
         literal = { nil_literal | boolean_literal | number_literal | text_literal | collection_literal }
             boolean_literal = { "true" | "false" }

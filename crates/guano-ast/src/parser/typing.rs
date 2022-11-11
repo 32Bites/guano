@@ -68,7 +68,7 @@ mod tests {
 
     use super::{
         super::parser::{InternalParser, Rule},
-        Type,
+        // Type,
     };
 
     #[test]
@@ -87,12 +87,12 @@ mod tests {
         ];
 
         for ty in types {
-            let res = InternalParser::parse(Rule::type_, ty).unwrap();
+            let _res = InternalParser::parse(Rule::type_, ty).unwrap();
 
-            for pair in res {
-                let ty = Type::parse(pair, todo!());
+/*             for pair in res {
+                let _ty = Type::parse(pair, todo!());
                 println!("{ty:?}");
-            }
+            } */
         }
     }
 }

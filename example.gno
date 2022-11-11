@@ -16,6 +16,16 @@ fun main @ args: []string {
     let age: float = add(first, second);
     let new_age: float = add(first, add(second, second));
 
+    if true {
+
+    } else if false {
+
+    }
+
+    while true {
+        
+    }
+
     personPrint(age, name);
 }
 
