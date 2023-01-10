@@ -1,0 +1,104 @@
+import sqrt as srt from math;
+// import {sqrt as srt, sqrt} from math; is valid
+// import {sqrt as srt, *} from math; renames srt, and imports the rest as normal.
+import math;
+// import math as mathematics; is valid
+import * from math;
+
+pub class Animal {
+    pub animal_name: string;
+}
+
+impl Animal {
+    pub fun get_animal_name() -> string {
+        return @animal_name;
+    }
+
+    pub fun init(name: string) {
+        self.animal_name = name;
+        <<;
+
+        < <;
+
+        0x100
+        0b100
+        011000
+    }
+
+    pub fun init(first_part: string, second_part: string) {
+        @animal_name = first_part + second_part;
+    }
+}
+
+impl AmbiguousEntity on Animal {}
+
+pub proto AmbiguousEntity {
+    fun has_name -> boolean {
+        return @self is NamedEntity;
+    }
+}
+
+pub proto NamedEntity: AmbiguousEntity {
+    fun retrieve_name() -> string;
+    fun change_name(name: string) -> string;
+}
+
+pub class Person: Animal {
+    pub name: string;
+    pub age: uint;
+}
+
+impl Person {
+    pub fun init(name: string, age: uint) {
+        @super("Human"); // calls the superclasses constructor
+
+        @name = name;
+        @age = age;
+    }
+
+    veto fun get_animal_name -> string {
+        return "I am a human";
+    }
+}
+
+impl AmbiguousEntity on Person {
+    fun has_name -> boolean {
+        return true;
+    }
+}
+
+impl NamedEntity on Person {
+    fun retrieve_name -> string {
+        return @name;
+    }
+
+    fun change_name(name: string) -> string {
+        let old = self.retrieve_name();
+        self.name = name;
+
+        return name;
+    }
+}
+
+fun main {
+    let people = [
+        Person("Noah", 17),
+        Person("Gabby", 14),
+        Person::init("Rebecca", 36),
+        Person::init("Jairo", 41)
+    ];
+}
+
+fun sqrt_2 -> float {
+    return math::sqrt(2.0);
+}
+
+fun other_sqrt_2 -> float {
+    return srt(2.0);
+}
+
+/// Reee
+
+/*!
+    Reeeeee
+*/
