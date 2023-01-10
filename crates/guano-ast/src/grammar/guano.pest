@@ -10,36 +10,57 @@ COMMENT = _{ capturing_comment }
 WHITESPACE = _{ WHITE_SPACE }
 
 // Keywords
-keyword = { (
-    "let" | 
-    "var" |
-    "fun" |
-    "class" |
-    "this" |
-    "type" |
-    "import" |
-    "loop" |
-    "for" | 
-    "while" |
-    "in" |
-    "break" |
-    "continue" |
-    "if" |
-    "else" |
-    "return" |
-    "as" |
-    "veto" |
-    "static" |
-    "priv" ) ~
-        !(("_" | ASCII_ALPHANUMERIC))
-}
-    
+keyword = @{ this_keyword | nil_keyword | fun_keyword | 
+class_keyword | type_keyword | import_keyword | 
+loop_keyword | for_keyword | while_keyword |
+in_keyword | break_keyword | continue_keyword |
+if_keyword | else_keyword | return_keyword |
+as_keyword | veto_keyword | static_keyword |
+priv_keyword | boolean_literal_keyword | variable_declaration_keyword |
+proto_keyword | boolean_keyword | integer_keyword | unsigned_integer_keyword |
+floating_point_keyword | string_keyword | character_keyword }
+
+keyword_end = @{ !( "_" | ASCII_ALPHANUMERIC ) }
+
+this_keyword = @{ "this" ~ keyword_end }
+nil_keyword = @{ "nil" ~ keyword_end }
+fun_keyword = @{ "fun" ~ keyword_end }
+class_keyword = @{ "class" ~ keyword_end }
+type_keyword = @{ "type" ~ keyword_end }
+import_keyword = @{ "import" ~ keyword_end }
+loop_keyword = @{ "loop" ~ keyword_end }
+for_keyword = @{ "for" ~ keyword_end }
+while_keyword = @{ "while" ~ keyword_end }
+in_keyword = @{ "in" ~ keyword_end }
+break_keyword = @{ "break" ~ keyword_end }
+continue_keyword = @{ "continue" ~ keyword_end }
+if_keyword = @{ "if" ~ keyword_end }
+else_keyword = @{ "else" ~ keyword_end }
+return_keyword = @{ "return" ~ keyword_end }
+as_keyword = @{ "as" ~ keyword_end }
+veto_keyword = @{ "veto" ~ keyword_end }
+static_keyword = @{ "static" ~ keyword_end }
+priv_keyword = @{ "priv" ~ keyword_end }
+proto_keyword = @{ "proto" ~ keyword_end }
+boolean_keyword = @{ "boolean" ~ keyword_end }
+integer_keyword = @{ "int" ~ keyword_end }
+unsigned_integer_keyword = @{ "uint" ~ keyword_end }
+floating_point_keyword = @{ "float" ~ keyword_end }
+string_keyword = @{ "string" ~ keyword_end }
+character_keyword = @{ "character" ~ keyword_end }
+
+boolean_literal_keyword = { true_keyword | false_keyword }
+    true_keyword = @{ "true" ~ keyword_end }
+    false_keyword = @{ "false" ~ keyword_end }
+variable_declaration_keyword = { let_keyword | var_keyword }
+    let_keyword = @{ "let" ~ keyword_end }
+    var_keyword = @{ "var" ~ keyword_end }
 // Declarations
 declaration = { variable_declaration | function_declaration |
                 type_alias_declaration | prototype_declaration |
                 class_declaration | import_declaration }
 
-    variable_declaration = { ( "let" | "var" ) ~ identifier ~
+    variable_declaration = { variable_declaration_keyword ~ identifier ~
             (
                 ( declaration_type ~ variable_declaration_value ) | 
                 ( declaration_type ) | ( variable_declaration_value )
@@ -47,31 +68,31 @@ declaration = { variable_declaration | function_declaration |
         declaration_type = { ":" ~ type_ }
         variable_declaration_value = { "=" ~ expression }
 
-    procedure_declaration = { "fun" ~ identifier ~ declaration_type? ~ procedure_declaration_parameters? }
+    procedure_declaration = { fun_keyword ~ identifier ~ declaration_type? ~ procedure_declaration_parameters? }
     procedure_declaration_parameters = { "@" ~ identifier ~ declaration_type ~ ("," ~ identifier ~ declaration_type)* }
 
     function_declaration = { procedure_declaration ~ block }
 
-    type_alias_declaration = { "type" ~ identifier ~ "=" ~ type_ ~ ";" }
+    type_alias_declaration = { type_keyword ~ identifier ~ "=" ~ type_ ~ ";" }
 
     prototypes = { identifier ~ ( "+" ~ identifier )* }
     prototype_declaration = {
-        "proto" ~ identifier ~ ( "(" ~ prototypes? ~ ")" )? ~ "{" ~
+        proto_keyword ~ identifier ~ ( "(" ~ prototypes? ~ ")" )? ~ "{" ~
             ( prototype_method )* ~ 
         "}"
     }
     prototype_method = {
-        "static"? ~ procedure_declaration ~ ( ";" | block )
+        static_keyword? ~ procedure_declaration ~ ( ";" | block )
     }
     class_declaration = { 
-        "class" ~ identifier ~ ("(" ~ identifier? ~ ")")? ~ (":" ~ prototypes)? ~ "{" ~ 
+        class_keyword ~ identifier ~ ("(" ~ identifier? ~ ")")? ~ (":" ~ prototypes)? ~ "{" ~ 
             (class_property | class_method)* ~
         "}"
     }
-    class_property = { ("static" | "priv")? ~ ( "var" | "let" ) ~ identifier ~ declaration_type ~ ";" }
-    class_method = { ("static" | "priv")? ~ function_declaration }
+    class_property = { ( static_keyword | priv_keyword )? ~ variable_declaration_keyword ~ identifier ~ declaration_type ~ ";" }
+    class_method = { ( static_keyword | priv_keyword )? ~ function_declaration }
 
-    import_declaration = { "import" ~ string_literal ~ ("as" ~ identifier)? ~ ";" }
+    import_declaration = { import_keyword ~ string_literal ~ ( as_keyword ~ identifier )? ~ ";" }
 
 
 
@@ -80,23 +101,22 @@ statement = { variable_declaration | return_statement | loop_control |
                 infinite_loop | for_loop | while_loop | if_statement | 
                 assignment_statement | expression_statement }
 
-    return_statement = { "return" ~ expression? ~ ";" }
-    loop_control = { ("break" | "continue" ) ~ ";" }
-    infinite_loop = { "loop" ~ block }
-    for_loop = { "for" ~ identifier ~ "in" ~ expression ~ block }
-    while_loop = { "while" ~ expression ~ block }
-    if_statement = { "if" ~ expression ~ block ~ else_statement? }
-    else_statement = { "else" ~ (block | if_statement) }
+    return_statement = { return_keyword ~ expression ~ ";" }
+    loop_control = { ( break_keyword | continue_keyword ) ~ ";" }
+    infinite_loop = { loop_keyword ~ block }
+    for_loop = { for_keyword ~ identifier ~ in_keyword ~ expression ~ block }
+    while_loop = { while_keyword ~ expression ~ block }
+    if_statement = { if_keyword ~ expression ~ block ~ else_statement? }
+    else_statement = { else_keyword ~ (block | if_statement) }
     assignment_statement = { expression ~ assignment_operator ~ expression ~ ";" }
         assignment_operator = { "=" | "+=" | "*=" | "/=" | "%=" | "-=" | "^=" | "&=" | "|=" | "<<=" | ">>=" | "&&=" | "||=" }
     expression_statement = { expression ~ ";" }
 
 // Block
-block = { "{" ~ (statement | block | ";")* ~ "}" }
+block = { "{" ~ ( statement | block | ";" )* ~ "}" }
 
 // Identifier
 identifier = @{ !keyword ~ (("_" | ASCII_ALPHA) ~ ("_" | ASCII_ALPHANUMERIC)* ) }
-value_identifier = { "this" | identifier }
 
 // Type
 type_ = { function_type | list_type | tuple_type | primitive_type | custom_type }
@@ -105,17 +125,17 @@ type_ = { function_type | list_type | tuple_type | primitive_type | custom_type 
                     unsigned_integer_type | floating_point_type | 
                     string_type | character_type }
 
-        boolean_type = { "boolean" }
-        integer_type = { "int" }
-        unsigned_integer_type = { "uint" }
-        floating_point_type = { "float" }
-        string_type = { "string" }
-        character_type = { "character" }
+        boolean_type = { boolean_keyword }
+        integer_type = { integer_keyword }
+        unsigned_integer_type = { unsigned_integer_keyword }
+        floating_point_type = { floating_point_keyword }
+        string_type = { string_keyword }
+        character_type = { character_keyword }
         custom_type = { identifier }
         list_type = { "[]" ~ type_ }
         tuple_type = { "(" ~ tuple_type_inner? ~ ")"}
         tuple_type_inner = { type_ ~ ("," ~ type_)* }
-        function_type = { "fun" ~ ("(" ~ ( type_ ~ ( "," ~ type_)* )? ~ ")")? ~ declaration_type? }
+        function_type = { fun_keyword ~ ("(" ~ ( type_ ~ ( "," ~ type_)* )? ~ ")")? ~ declaration_type? }
 
 
 // Expression
@@ -154,13 +174,13 @@ expression = { prefix* ~ primary ~ postfix* ~ ( infix ~ prefix* ~ primary ~ post
         call = { "(" ~ list_inner? ~ ")" }
         index = { "[" ~ expression ~ "]" }
         property = { "." ~ identifier }
-        cast = { "as" ~ type_ }
+        cast = { as_keyword ~ type_ }
     // Primary expressions
-    primary = _{ literal | grouped | value_identifier }
+    primary = _{ this_keyword | identifier | literal | grouped }
         // Literals
         literal = { nil_literal | boolean_literal | number_literal | text_literal | collection_literal }
-            boolean_literal = { "true" | "false" }
-            nil_literal = { "nil" }
+            boolean_literal = { boolean_literal_keyword }
+            nil_literal = { nil_keyword }
             // Numeric (integer and float) literals
             number_literal = { floating_point | integer }
                 integer = { binary_integer | hexadecial_integer | decimal_integer }

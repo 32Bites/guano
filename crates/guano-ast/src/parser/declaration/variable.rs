@@ -27,9 +27,12 @@ impl VariableDeclaration {
         }
 
         let span = pair.as_span().into_span(input.clone());
-        let is_redeclarable = pair.as_str().starts_with("var");
-
         let mut inner = pair.into_inner();
+        let is_redeclarable = match inner.next().unwrap().as_str() {
+            "var" => true,
+            _ => false
+        };
+
         let name = inner.next().unwrap().into_span_str(input.clone());
 
         let mut next = inner.next();

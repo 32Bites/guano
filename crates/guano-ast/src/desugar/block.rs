@@ -1,7 +1,7 @@
 use super::{statement::Statement, Desugar};
 use crate::parser::{
     block::{Block as ParseBlock, BlockItem as ParseBlockItem},
-    statement::{Statement as ParseStatement},
+    statement::Statement as ParseStatement,
     span::Span,
 };
 

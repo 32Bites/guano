@@ -67,7 +67,7 @@ impl Type {
             Rule::primitive_type | Rule::type_ | Rule::declaration_type => {
                 return Type::parse(pair.into_inner().next().unwrap(), input)
             }
-            _ => unreachable!(),
+            r => unreachable!("{r:?}"),
         };
 
         Type { kind, span }

@@ -63,7 +63,8 @@ impl Expression {
 
                             ExpressionKind::Grouped(Box::new(expression))
                         }
-                        Rule::value_identifier | Rule::identifier => ExpressionKind::Variable(primary.into_span_str(input.clone())),
+                        Rule::this_keyword => ExpressionKind::This,
+                        Rule::identifier => ExpressionKind::Variable(primary.into_span_str(input.clone())),
                         r => panic!("{r:?} - {:?}", primary.as_str()),
                     };
 
@@ -181,6 +182,7 @@ pub enum ExpressionKind {
     Grouped(Box<Expression>),
     Literal(Literal),
     Variable(SpanStr),
+    This,
 
     // Prefix
     Unary {
@@ -220,6 +222,7 @@ impl ExpressionKind {
             ExpressionKind::Grouped(_) => true,
             ExpressionKind::Literal(_) => true,
             ExpressionKind::Variable(_) => true,
+            ExpressionKind::This => true,
             ExpressionKind::Call {
                 function: _,
                 arguments: _,
