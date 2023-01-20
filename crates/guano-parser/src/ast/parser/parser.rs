@@ -146,7 +146,7 @@ impl<'source> ParserContext<'source> {
     }
 
     pub fn eat_whitespace(&mut self) -> Res<'source, ()> {
-        regex(r"\s*").parse(self)?;
+        regex(r"^\s*").parse(self)?;
 
         Ok(())
     }
