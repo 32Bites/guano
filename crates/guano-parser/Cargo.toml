@@ -6,22 +6,23 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bigdecimal = "0.3.0"
-nom = "7.1.2"
-nom_locate = "4.0.0"
 indenter = "0.3.3"
-bitflags = "1.3.2"
-internment = { version = "0.7.0", features = ["arc", "serde"] }
-serde = { version = "1.0.152", features = ["derive"], optional = true }
-guano-files = { path = "../guano-files" }
-guano-span = { path = "../guano-span" }
+# serde = { version = "1.0.152", features = ["derive"] }
+pretty = "0.11.3"
+utf8-chars = "2.0.3"
+static_init = "1.0.3"
+thiserror = "1.0.38"
+impl-trait-for-tuples = "0.2.2"
+guano-syntax = { path = "../guano-syntax" }
+guano-common = { path = "../guano-common" }
+guano-interner = { path = "../guano-interner" }
 
 [features]
 default = []
-serde = ["dep:serde"]
 
 [dev-dependencies]
-peak_alloc = "0.1.0"
-serde-value = "0.7.0"
-ptree = { version = "0.4.0", features = ["serde-value"] }
-guano-parser = { path = ".", features = ["serde"] }
+benchmarking = "0.4.11"
+guano-common = { path = "../guano-common" }
+# peak_alloc = "0.1.0"
+# serde-value = "0.7.0"
+# ptree = { version = "0.4.0", features = ["serde-value"] }

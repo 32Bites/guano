@@ -1,0 +1,156 @@
+SourceFile = (items: ModuleItem*)
+
+Name = 'iden' | 'this'
+Path = (segments: PathSegment*)
+PathSegment = '::'? (segment: Name)
+
+ListType = '[' Type ']'
+NilableType = Type '?'
+
+Type = ListType | NilableType | Path
+
+Expr = Literal | BinaryExpr | Path |
+    ContinueExpr | BreakExpr | ReturnExpr | 
+    Block | ThisExpr | GroupExpr | 
+    IfExpr | LoopExpr | WhileExpr | 
+    ForExpr | UnaryExpr | CallExpr | 
+    IndexExpr | FieldExpr | CastExpr | 
+    ListExpr | IsExpr
+
+Literal =
+    'lit_float' | 'lit_integer' | 'lit_string' | 
+    'lit_char' | 'true' | 'false' | 
+    'nil' | 'nan' | 'inf'
+
+BinaryOp =  '||' | '&&' | '==' | '!=' | 
+    '<=' | '>=' | '<' | '>' | 
+    '+' | '*' | '-' | '/' | 
+    '%' | '<<' | '>>' | '^' | 
+    '|' | '&' | '=' | '+=' | 
+    '/=' | '*=' | '%=' | '>>=' |
+    '<<=' | '-=' | '|=' | '&=' | 
+    '^=' | '&&=' | '||='
+
+BinaryExpr = 
+    (lhs: Expr)
+    (op: BinaryOp)
+    (rhs: Expr)
+
+UnaryOp = '-' | '!'
+
+UnaryExpr = 
+    (op: UnaryOp)
+    (rhs: Expr)
+
+ContinueExpr = 'continue'
+BreakExpr = 'break'
+ReturnExpr = 'return' (value: Expr)?
+ThisExpr = '@' 'iden'?
+GroupExpr = '(' (value: Expr) ')'
+IfExpr = 'if' (condition: Expr)
+    (body: Block)
+    (else_block: ElseBlock)?
+
+ElseBlock = 'else' ( Block | IfExpr )
+
+LoopExpr = 'loop' (body: Block)
+WhileExpr = 'while' 
+    (condition: Expr) 
+    (body: Block)
+ForExpr = 'for' 'iden' 'in' 
+    (iterator: Expr) 
+    (body: Block)
+
+IsExpr = (value: Expr) 'is' Type
+
+CallExpr = (value: Expr) 
+    '(' (params: ListExprItem*) ')'
+
+IndexExpr = (value: Expr) 
+    '[' (index: Expr) ']'
+FieldExpr = (value: Expr) '.' 'iden'
+CastExpr = (value: Expr) 'as' Type
+ListExpr = '[' (values: ListExprItem*) ']'
+ListExprItem = ','? (value: Expr)
+
+Block = 
+    '{' 
+        (statements: Statement*) 
+        (end_expr: Expr)? 
+    '}'
+
+ExprStatement = (value: Expr) ';'?
+
+EmptyStatement = ';'?
+
+Statement = ExprStatement | 
+    EmptyStatement | 
+    Var | 
+    Import
+
+Func = 'pub'? 
+    (qualifiers: FuncQualifiers) 
+    'fun' 'iden' 
+    (params: FuncParams)?
+    (return_type: FuncType)?
+    (body: FuncBody)
+
+FuncQualifiers = 'veto'? 'static'?
+FuncParam = 'iden' ':' Type ','?
+FuncParams = '(' (inner: FuncParam*) ')'
+FuncType = '->' Type
+FuncBody = Block | ';'
+
+Class = 'pub'? 'class' 'iden' 
+    (extends: Path)?
+    ((body: ClassBody) | ';')
+
+ClassField = 'pub'? 'iden' ':' Type ';'
+ClassBody = '{' (fields: ClassField*) '}'
+
+Proto = 'pub'? 'proto' 'iden' 
+    (extends: ProtoExtends)?
+    (body: ProtoBody)
+ProtoExtends = ':' 
+    (extensions: ProtoExtension*)
+ProtoExtension = '+'? 
+    (path: Path)
+ProtoBody = '{' (methods: Func*) '}'
+
+Var = (qualifiers: VarQualifiers)? 
+    (kind: VarKind) 'iden'
+    (ty: VarType)?
+    (value: VarValue)? ';'
+VarQualifiers = 'pub'? 'static'?
+VarType = ':' Type
+VarValue = '=' (value: Expr)?
+VarKind = 'var' | 'let'
+
+Decl = Var | Class | Proto | Func | Import
+
+Module = 'pub'? 'module' 'iden' 
+    (body: ModuleBody)
+ModuleBody = '{' (items: ModuleItem*) '}'
+ModuleItem = Decl | Impl
+
+Impl = ImplProto | ImplType
+ImplBody = '{' (items: Func*) '}'
+ImplProto = 'impl' (prototype: Path) 
+    'on' Type 
+    (body: ImplBody)
+
+ImplType = 'impl' Type 
+    (body: ImplBody)
+
+ImportPath = Path? '::'? '*'?
+ImportAlias = 'as' 'iden'
+ImportItem = (path: ImportPath) 
+    (alias: ImportAlias)? ','?
+ImportItems = '{' (items: ImportItem*) '}'
+ImportBody = ImportItem | ImportItems
+ImportFrom = 'import' 
+    (body: ImportBody) 'from' 
+    (path: Path) ';'
+ImportBasic = 'import' 
+    (body: ImportBody) ';'
+Import = ImportFrom | ImportBasic

@@ -14,8 +14,8 @@ impl Animal {
         return @animal_name;
     }
 
-    pub fun init(name: string) {
-        self.animal_name = name;
+    pub init(name: string) {
+        this.animal_name = name;
         <<;
 
         < <;
@@ -25,7 +25,7 @@ impl Animal {
         011000
     }
 
-    pub fun init(first_part: string, second_part: string) {
+    init(first_part: string, second_part: string) {
         @animal_name = first_part + second_part;
     }
 }
@@ -34,7 +34,7 @@ impl AmbiguousEntity on Animal {}
 
 pub proto AmbiguousEntity {
     fun has_name -> boolean {
-        return @self is NamedEntity;
+        return @ is NamedEntity;
     }
 }
 
@@ -73,8 +73,8 @@ impl NamedEntity on Person {
     }
 
     fun change_name(name: string) -> string {
-        let old = self.retrieve_name();
-        self.name = name;
+        let old = this.retrieve_name();
+        this.name = name;
 
         return name;
     }

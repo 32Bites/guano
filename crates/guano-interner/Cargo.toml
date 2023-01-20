@@ -1,13 +1,10 @@
 [package]
-name = "guano"
+name = "guano-interner"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[workspace]
-exclude = ["crates/guano-visualizer"]
-members = ["crates/*"]
-# members = ["crates/guano-files", "crates/guano-span"]
-
 [dependencies]
+guano-syntax = { path = "../guano-syntax" }
+guano-common = { path = "../guano-common" }

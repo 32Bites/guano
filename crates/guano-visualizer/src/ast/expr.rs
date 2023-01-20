@@ -145,7 +145,7 @@ impl From<&List> for Tree<Range<usize>> {
     fn from(expr: &List) -> Self {
         Tree::List {
             name: Element::new(']', "List".into(), Some("List expression".into())),
-            items: expr.expressions().iter().map(|e| e.into()).collect(),
+            items: expr.exprs().iter().map(|e| e.into()).collect(),
             extra: expr.span().to_range(),
         }
     }
@@ -190,7 +190,7 @@ impl From<&Call> for Tree<Range<usize>> {
                     "parameters".into(),
                     Tree::List {
                         name: Element::new('⎆', "Parameters".into(), None),
-                        items: expr.parameters().iter().map(|p| p.into()).collect(),
+                        items: expr.params().iter().map(|p| p.into()).collect(),
                         extra: expr.span().to_range(),
                     },
                 ),

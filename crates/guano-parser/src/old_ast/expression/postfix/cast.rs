@@ -1,0 +1,81 @@
+use nom::Offset;
+
+use crate::ast::prelude::*;
+
+#[derive(Debug, Clone)]
+pub struct Cast {
+    expr: Box<Expr>,
+    ty: Type,
+    span: NodeSpan,
+}
+
+impl Cast {
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
+
+    pub fn ty(&self) -> &Type {
+        &self.ty
+    }
+
+    pub fn span(&self) -> &NodeSpan {
+        &self.span
+    }
+
+    pub fn parse<'b>(original: Span, expr: &'b Expr) -> impl FnMut(Span) -> Res<Expr> + 'b {
+        let count = original.to_node().offset(&expr.span);
+        let original = original.take_split(count).0;
+        move |input| {
+            let (input, ty) = preceded(
+                padded(Keyword::As),
+                map(expect(Type::parse, "Expected a type"), |t| {
+                    t.unwrap_or_default()
+                }),
+            )(input)?;
+
+            let start = expr.span.to_range().start;
+            let end = ty.span().to_range().end;
+
+            let byte_range = start..end;
+            let byte_count = byte_range.count();
+
+            let span = original.take(byte_count).into_node();
+
+            let cast = Self {
+                expr: Box::new(expr.clone()),
+                ty,
+                span: span.clone(),
+            };
+
+            let kind = ExprKind::Cast(cast);
+
+            let expr = Expr::new(kind, span);
+
+            Ok((input, expr))
+        }
+    }
+}
+
+impl<'a, D: ?Sized + pretty::DocAllocator<'a, ()>> pretty::Pretty<'a, D, ()> for &'a Cast {
+    fn pretty(self, allocator: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        self.expr()
+            .pretty(allocator)
+            .append(allocator.softline())
+            .append("as")
+            .append(allocator.softline())
+            .append(self.ty())
+            .group()
+    }
+}
+
+impl std::fmt::Display for Cast {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} as {}", self.expr, self.ty)
+    }
+}
+
+impl Node for Cast {
+    fn span(&self) -> &NodeSpan {
+        &self.span
+    }
+}
