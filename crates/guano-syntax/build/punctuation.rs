@@ -1,4 +1,5 @@
 use heck::ToShoutySnakeCase;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use strum::{AsRefStr, EnumIter, EnumVariantNames, IntoEnumIterator, IntoStaticStr, VariantNames};
@@ -15,8 +16,8 @@ pub enum Punctuation {
     RightCurly,
     LeftBrack,
     RightBrack,
-    LeftAngle,
-    RightAngle,
+    Lt,
+    Gt,
     At,
     Amp,
     Pipe,
@@ -34,8 +35,10 @@ pub enum Punctuation {
     Pipe2,
     Colon2,
     Eq2,
+    Lt2,
     LtEq,
     GtEq,
+    Gt2,
     BangEq,
     PlusEq,
     MinusEq,
@@ -47,10 +50,8 @@ pub enum Punctuation {
     SlashEq,
     StarEq,
     PercentEq,
-    Shl,
-    Shr,
-    ShlEq,
-    ShrEq,
+    Lt2Eq,
+    Gt2Eq,
     Ques,
 }
 
@@ -114,6 +115,83 @@ impl Punctuation {
         Self::iter().map(|p| (p, p.repr()))
     }
 
+    pub fn consts() -> TokenStream {
+        let mut names = vec![];
+        let mut arms = vec![];
+        let mut repr_match_arms = vec![];
+
+        let reprs = Punctuation::reprs()
+            .into_group_map_by(|v| v.1.chars().next().unwrap())
+            .into_iter()
+            .sorted_by_key(|k| k.0)
+            .map(|(_, v)| v)
+            .into_group_map_by(|v| v.len() == 1)
+            .into_iter()
+            .sorted_by_key(|k| k.0)
+            .rev()
+            .map(|(_, v)| {
+                v.into_iter()
+                    .map(|v| v.into_iter().sorted_by_key(|p| p.1).rev())
+                    .flatten()
+            })
+            .flatten()
+            .collect_vec();
+
+        // let groups = format!("{:#?}", reprs);
+
+        for (name, repr) in reprs {
+            let name = format_ident!("{}", name.as_ref().to_shouty_snake_case());
+            let doc = format!("{repr:?}");
+
+            names.push(name.clone());
+
+            let arm = quote! {
+                #[doc = #doc]
+                #name,
+            };
+
+            arms.push(arm);
+
+            let repr_match_arm = quote! {
+                Punctuation::#name => #repr,
+            };
+
+            repr_match_arms.push(repr_match_arm);
+        }
+
+        quote! {
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+            #[doc = "Punctuation marks"]
+            pub enum Punctuation {
+                #(#arms)*
+            }
+
+            impl Punctuation {
+                pub const ALL: &'static [Punctuation] = &[#(Punctuation::#names,)*];
+                // pub const STRINGS: &'static [&'static str] = &[#(Punctuation::#names.as_str(),)*];
+
+                pub const fn as_str(&self) -> &'static str {
+                    match self {
+                        #(#repr_match_arms)*
+                    }
+                }
+
+                pub const fn syntax_kind(&self) -> crate::SyntaxKind {
+                    match self {
+                        #(Punctuation::#names => crate::SyntaxKind::#names,)*
+                    }
+                }
+            }
+
+            impl From<Punctuation> for crate::SyntaxKind {
+                #[inline]
+                fn from(p: Punctuation) -> Self {
+                    p.syntax_kind()
+                }
+            }
+        }
+    }
+
     pub fn repr(&self) -> &'static str {
         match self {
             Punctuation::Semicolon => ";",
@@ -125,8 +203,6 @@ impl Punctuation {
             Punctuation::RightCurly => "}",
             Punctuation::LeftBrack => "[",
             Punctuation::RightBrack => "]",
-            Punctuation::LeftAngle => "<",
-            Punctuation::RightAngle => ">",
             Punctuation::At => "@",
             Punctuation::Amp => "&",
             Punctuation::Pipe => "|",
@@ -144,6 +220,12 @@ impl Punctuation {
             Punctuation::Pipe2 => "||",
             Punctuation::Colon2 => "::",
             Punctuation::Eq2 => "==",
+            Punctuation::Lt => "<",
+            Punctuation::Gt => ">",
+            Punctuation::Lt2 => "<<",
+            Punctuation::Gt2 => ">>",
+            Punctuation::Lt2Eq => "<<=",
+            Punctuation::Gt2Eq => ">>=",
             Punctuation::LtEq => "<=",
             Punctuation::GtEq => ">=",
             Punctuation::BangEq => "!=",
@@ -157,10 +239,6 @@ impl Punctuation {
             Punctuation::SlashEq => "/=",
             Punctuation::StarEq => "*=",
             Punctuation::PercentEq => "%=",
-            Punctuation::Shl => "<<",
-            Punctuation::Shr => ">>",
-            Punctuation::ShlEq => "<<=",
-            Punctuation::ShrEq => ">>=",
             Punctuation::Ques => "?",
         }
     }

@@ -65,3 +65,24 @@ impl Literal {
             .or(self.false_token().map(|_| false))
     }
 }
+
+
+impl BinaryExpr {
+    pub fn lhs(&self) -> Option<Expr> {
+        self.exprs().next()
+    }
+
+    pub fn rhs(&self) -> Option<Expr> {
+        self.exprs().nth(1)
+    }
+}
+
+impl IndexExpr {
+    pub fn expr(&self) -> Option<Expr> {
+        self.exprs().next()
+    }
+
+    pub fn index(&self) -> Option<Expr> {
+        self.exprs().nth(1)
+    }
+}

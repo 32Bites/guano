@@ -1,3 +1,5 @@
+use std::vec;
+
 use heck::ToShoutySnakeCase;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -69,6 +71,67 @@ impl Keyword {
     /*     pub const fn primitives() -> &'static [Self] {
         &[Self::Boolean,  Self::Int, Self::Uint,  Self::Float,  Self::Char,  Self::String]
     } */
+
+    pub fn consts() -> TokenStream {
+        let mut names = vec![];
+        let mut syntax_names = vec![];
+        let mut arms = vec![];
+        let mut match_arms = vec![];
+    
+        for keyword in Keyword::VARIANTS {
+            let string = keyword.to_lowercase();
+            let name = format_ident!("{}", keyword.to_shouty_snake_case());
+            let syntax_name = format_ident!("KW_{name}");
+            let doc = format!("{string:?} keyword");
+    
+            let source = quote! {
+                #[doc = #doc]
+                #name,
+            };
+
+            names.push(name.clone());
+            syntax_names.push(syntax_name);
+            arms.push(source);
+
+            let match_arm = quote! {
+                Keyword::#name => #string,
+            };
+
+            match_arms.push(match_arm);
+        }
+
+        quote! {
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+            #[doc = "Keywords"]
+            pub enum Keyword {
+                #(#arms)*
+            }
+
+            impl Keyword {
+                pub const ALL: &'static [Keyword] = &[#(Keyword::#names,)*];
+                // pub const STRINGS: &'static [&'static str] = &[#(Keyword::#names.as_str(),)*];
+
+                pub const fn as_str(&self) -> &'static str {
+                    match self {
+                        #(#match_arms)*
+                    }
+                }
+
+                pub const fn syntax_kind(&self) -> crate::SyntaxKind {
+                    match self {
+                        #(Keyword::#names => crate::SyntaxKind::#syntax_names,)*
+                    }
+                }
+            }
+
+            impl From<Keyword> for crate::SyntaxKind {
+                #[inline]
+                fn from(kw: Keyword) -> Self {
+                    kw.syntax_kind()
+                }
+            }
+        }
+    }
 
     pub fn impl_kind() -> TokenStream {
         let from_arms = Self::VARIANTS.into_iter().map(|s| {

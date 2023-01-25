@@ -11,7 +11,9 @@ Type = ListType | NilableType | Path
 
 Expr = Literal | BinaryExpr | Path |
     ContinueExpr | BreakExpr | ReturnExpr | 
-    Block | ThisExpr | GroupExpr | 
+    Block | 
+    // ThisExpr | 
+    GroupExpr | 
     IfExpr | LoopExpr | WhileExpr | 
     ForExpr | UnaryExpr | CallExpr | 
     IndexExpr | FieldExpr | CastExpr | 
@@ -31,55 +33,42 @@ BinaryOp =  '||' | '&&' | '==' | '!=' |
     '<<=' | '-=' | '|=' | '&=' | 
     '^=' | '&&=' | '||='
 
-BinaryExpr = 
-    (lhs: Expr)
-    (op: BinaryOp)
-    (rhs: Expr)
+BinaryExpr = Expr (op: BinaryOp) Expr
 
 UnaryOp = '-' | '!'
 
-UnaryExpr = 
-    (op: UnaryOp)
-    (rhs: Expr)
+UnaryExpr = (op: UnaryOp) Expr
 
 ContinueExpr = 'continue'
 BreakExpr = 'break'
-ReturnExpr = 'return' (value: Expr)?
-ThisExpr = '@' 'iden'?
-GroupExpr = '(' (value: Expr) ')'
-IfExpr = 'if' (condition: Expr)
-    (body: Block)
-    (else_block: ElseBlock)?
+ReturnExpr = 'return' Expr?
+// ThisExpr = '@' 'iden'?
+GroupExpr = '(' Expr ')'
+IfExpr = 'if' Expr Block ElseBlock?
 
 ElseBlock = 'else' ( Block | IfExpr )
 
-LoopExpr = 'loop' (body: Block)
-WhileExpr = 'while' 
-    (condition: Expr) 
-    (body: Block)
-ForExpr = 'for' 'iden' 'in' 
-    (iterator: Expr) 
-    (body: Block)
+LoopExpr = 'loop' Block
+WhileExpr = 'while' Expr Block
+ForExpr = 'for' 'iden' 'in' Expr Block
 
-IsExpr = (value: Expr) 'is' Type
+IsExpr = Expr 'is' Type
 
-CallExpr = (value: Expr) 
-    '(' (params: ListExprItem*) ')'
+CallExpr = Expr '(' (params: ListExprItem*) ')'
 
-IndexExpr = (value: Expr) 
-    '[' (index: Expr) ']'
-FieldExpr = (value: Expr) '.' 'iden'
-CastExpr = (value: Expr) 'as' Type
+IndexExpr = Expr '[' Expr ']'
+FieldExpr = Expr '.' 'iden'
+CastExpr = Expr 'as' Type
 ListExpr = '[' (values: ListExprItem*) ']'
-ListExprItem = ','? (value: Expr)
+ListExprItem = ','? Expr
 
 Block = 
     '{' 
         (statements: Statement*) 
-        (end_expr: Expr)? 
+        Expr? 
     '}'
 
-ExprStatement = (value: Expr) ';'?
+ExprStatement = Expr ';'?
 
 EmptyStatement = ';'?
 
@@ -88,69 +77,56 @@ Statement = ExprStatement |
     Var | 
     Import
 
-Func = 'pub'? 
-    (qualifiers: FuncQualifiers) 
-    'fun' 'iden' 
-    (params: FuncParams)?
-    (return_type: FuncType)?
-    (body: FuncBody)
+Func = 'pub'? FuncQualifiers
+    'fun' 'iden' FuncParams?
+    FuncType? FuncBody
 
 FuncQualifiers = 'veto'? 'static'?
 FuncParam = 'iden' ':' Type ','?
-FuncParams = '(' (inner: FuncParam*) ')'
+FuncParams = '(' FuncParam* ')'
 FuncType = '->' Type
 FuncBody = Block | ';'
 
-Class = 'pub'? 'class' 'iden' 
-    (extends: Path)?
-    ((body: ClassBody) | ';')
+Class = 'pub'? 'class' 'iden' Path? (ClassBody | ';')
 
 ClassField = 'pub'? 'iden' ':' Type ';'
 ClassBody = '{' (fields: ClassField*) '}'
 
 Proto = 'pub'? 'proto' 'iden' 
-    (extends: ProtoExtends)?
-    (body: ProtoBody)
+    ProtoExtends? ProtoBody
 ProtoExtends = ':' 
-    (extensions: ProtoExtension*)
-ProtoExtension = '+'? 
-    (path: Path)
-ProtoBody = '{' (methods: Func*) '}'
+    ProtoExtension
+ProtoExtension = '+'? Path
+ProtoBody = '{' Func* '}'
 
-Var = (qualifiers: VarQualifiers)? 
-    (kind: VarKind) 'iden'
-    (ty: VarType)?
-    (value: VarValue)? ';'
+Var = VarQualifiers? VarKind 
+    'iden' VarType?
+    VarValue? ';'
 VarQualifiers = 'pub'? 'static'?
 VarType = ':' Type
-VarValue = '=' (value: Expr)?
+VarValue = '=' Expr?
 VarKind = 'var' | 'let'
 
 Decl = Var | Class | Proto | Func | Import
 
-Module = 'pub'? 'module' 'iden' 
-    (body: ModuleBody)
-ModuleBody = '{' (items: ModuleItem*) '}'
+Module = 'pub'? 'module' 
+    'iden' ModuleBody
+ModuleBody = '{' ModuleItem* '}'
 ModuleItem = Decl | Impl
 
 Impl = ImplProto | ImplType
-ImplBody = '{' (items: Func*) '}'
-ImplProto = 'impl' (prototype: Path) 
-    'on' Type 
-    (body: ImplBody)
+ImplBody = '{' Func* '}'
+ImplProto = 'impl' Path
+    'on' Type ImplBody
 
-ImplType = 'impl' Type 
-    (body: ImplBody)
+ImplType = 'impl' Type ImplBody
 
 ImportPath = Path? '::'? '*'?
 ImportAlias = 'as' 'iden'
-ImportItem = (path: ImportPath) 
-    (alias: ImportAlias)? ','?
-ImportItems = '{' (items: ImportItem*) '}'
+ImportItem = ImportPath ImportAlias? ','?
+ImportItems = '{' ImportItem* '}'
 ImportBody = ImportItem | ImportItems
 ImportFrom = 'import' 
-    (body: ImportBody) 'from' 
-    (path: Path) ';'
-ImportBasic = 'import' 
-    (body: ImportBody) ';'
+    ImportBody 'from' Path ';'
+ImportBasic = 'import' ImportBody ';'
 Import = ImportFrom | ImportBasic

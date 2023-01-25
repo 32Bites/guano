@@ -1,5 +1,5 @@
 use build_helper::warning;
-use heck::{ToLowerCamelCase, ToPascalCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase};
+use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase, ToTitleCase};
 use itertools::Itertools;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
@@ -42,12 +42,42 @@ impl AstNode {
     fn new_struct(grammar: &Grammar, name: &str, rule: &Rule) -> Option<AstNode> {
         let mut fields = vec![];
 
-        if let Err(err) = Self::lower_rule(&mut fields, grammar, None, rule) {
+        if let Err(err) = Self::lower_rule(&mut fields, grammar, rule) {
             warning!("Error constructing node: {err}");
             return None;
         }
 
-        let fields = fields.into_iter().unique().collect();
+        let mut field_map = fields
+            .into_iter()
+            .map(|f| (f.is_token(), f))
+            .into_group_map();
+
+        let mut fields = field_map.remove(&true).unwrap_or_else(Vec::new);
+
+        if let Some(remaining) = field_map.remove(&false) {
+            let field_map = remaining
+                .into_iter()
+                .into_grouping_map_by(|f| f.ty().to_string())
+                .fold(0usize, |s, _, _| s + 1);
+
+            let field_map = field_map.into_iter().map(|(ty, c)| {
+                let card = if c > 1 {
+                    Cardinality::Many
+                } else {
+                    Cardinality::Optional
+                };
+
+                (ty, card)
+            });
+
+            for (ty, cardinality) in field_map {
+                let field = Field::Node { ty, cardinality };
+
+                fields.push(field);
+            }
+        }
+
+        // let mut fields = field_map[true]
 
         Some(Self::Struct {
             name: name.to_owned(),
@@ -56,19 +86,12 @@ impl AstNode {
         })
     }
 
-    fn lower_rule(
-        fields: &mut Vec<Field>,
-        grammar: &Grammar,
-        label: Option<&String>,
-        rule: &Rule,
-    ) -> Result<(), String> {
+    fn lower_rule(fields: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) -> Result<(), String> {
         match rule {
-            Rule::Labeled { label, rule } => Self::lower_rule(fields, grammar, Some(label), rule)?,
+            Rule::Labeled { label: _, rule } => Self::lower_rule(fields, grammar, rule)?,
             Rule::Node(node) => {
                 let ty = grammar[*node].name.to_owned();
-                let name = label.cloned().unwrap_or_else(|| ty.to_lower_camel_case());
                 let field = Field::Node {
-                    name,
                     ty,
                     cardinality: Cardinality::Optional,
                 };
@@ -82,25 +105,20 @@ impl AstNode {
                     name = p.into();
                 }
                 let field = Field::Token {
-                    name: label.cloned(),
                     ty: name.to_pascal_case(),
                 };
                 fields.push(field);
             }
             Rule::Alt(rules) | Rule::Seq(rules) => {
                 for rule in rules {
-                    Self::lower_rule(fields, grammar, label, rule)?;
+                    Self::lower_rule(fields, grammar, rule)?;
                 }
             }
-            Rule::Opt(rule) => Self::lower_rule(fields, grammar, label, rule)?,
+            Rule::Opt(rule) => Self::lower_rule(fields, grammar, rule)?,
             Rule::Rep(rule) => {
                 if let Rule::Node(node) = &**rule {
                     let ty = grammar[*node].name.clone();
-                    let name = label
-                        .cloned()
-                        .unwrap_or_else(|| format!("{}s", ty.to_lower_camel_case()));
                     let field = Field::Node {
-                        name,
                         ty,
                         cardinality: Cardinality::Many,
                     };
@@ -257,11 +275,9 @@ impl AstNode {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Field {
     Token {
-        name: Option<String>,
         ty: String,
     },
     Node {
-        name: String,
         ty: String,
         cardinality: Cardinality,
     },
@@ -272,7 +288,7 @@ impl Field {
         let method_name = self.method_name();
         let ty = self.ty();
         match self {
-            Field::Token { name: _, ty: _ } => {
+            Field::Token { ty: _ } => {
                 let token_kind = self.token_kind().unwrap();
 
                 quote! {
@@ -283,7 +299,6 @@ impl Field {
                 }
             }
             Field::Node {
-                name: _,
                 ty: _,
                 cardinality: Cardinality::Many,
             } => {
@@ -295,7 +310,6 @@ impl Field {
                 }
             }
             Field::Node {
-                name: _,
                 ty: _,
                 cardinality: Cardinality::Optional,
             } => {
@@ -311,12 +325,8 @@ impl Field {
 
     pub fn ty(&self) -> TokenStream {
         match self {
-            Field::Token { name: _, ty: _ } => quote! { crate::SyntaxToken },
-            Field::Node {
-                name: _,
-                ty,
-                cardinality: _,
-            } => {
+            Field::Token { ty: _ } => quote! { crate::SyntaxToken },
+            Field::Node { ty, cardinality: _ } => {
                 let iden = format_ident!("{ty}");
 
                 quote! { #iden }
@@ -326,7 +336,7 @@ impl Field {
 
     pub fn token_kind(&self) -> Option<TokenStream> {
         match &self {
-            Field::Token { name: _, ty } => {
+            Field::Token { ty } => {
                 let is_keyword = Keyword::VARIANTS
                     .into_iter()
                     .find(|s| **s == &**ty)
@@ -342,24 +352,31 @@ impl Field {
                 })
             }
             Field::Node {
-                name: _,
                 ty: _,
                 cardinality: _,
             } => None,
         }
     }
 
+    pub fn is_token(&self) -> bool {
+        matches!(self, Field::Token { ty: _ })
+    }
+
     pub fn method_name(&self) -> Ident {
         match &self {
-            Field::Token { name: _, ty } => {
+            Field::Token { ty } => {
                 format_ident!("{}_token", ty.trim_start_matches("Lit").to_snake_case())
             }
-            Field::Node {
-                name,
-                ty: _,
-                cardinality: _,
-            } => {
-                let name = name.to_snake_case();
+            Field::Node { ty, cardinality } => {
+                let name = format!(
+                    "{}{}",
+                    ty.to_snake_case(),
+                    if cardinality == &Cardinality::Many {
+                        "s"
+                    } else {
+                        ""
+                    }
+                );
                 if &*name == "type" {
                     format_ident!("ty")
                 } else {

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use ast::AstNode;
-use build_helper::{out_dir, rerun_if_changed};
+use build_helper::out_dir;
 use heck::{ToShoutySnakeCase, ToTitleCase};
 use keyword::Keyword;
 use literal::Literal;
@@ -9,7 +9,7 @@ use proc_macro2::TokenStream;
 use punctuation::Punctuation;
 use quote::{format_ident, quote};
 use rust_format::Formatter;
-use std::{borrow::Cow, fs::File, io::Write, vec};
+use std::{borrow::Cow, fs::File, io::Write};
 use strum::VariantNames;
 use token::Token;
 use ungrammar::Grammar;
@@ -21,7 +21,7 @@ mod punctuation;
 mod token;
 
 fn main() {
-    rerun_if_changed(concat!(env!("CARGO_MANIFEST_DIR"), "/guano.ungram"));
+    // rerun_if_changed(concat!(env!("CARGO_MANIFEST_DIR"), "/guano.ungram"));
     let grammar: Grammar = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/guano.ungram"))
         .parse()
         .unwrap();
@@ -156,76 +156,13 @@ fn write_nodes(file: &mut File, grammar: &Grammar) {
 }
 
 fn write_consts(file: &mut File) {
-    let mut keywords = vec![];
-    let mut keyword_strings = vec![];
-
-    for keyword in Keyword::VARIANTS {
-        let string = keyword.to_lowercase();
-        let name = format_ident!("{}", keyword.to_shouty_snake_case());
-        let doc = format!("{string:?} keyword");
-
-        let source = quote! {
-            #[doc = #doc]
-            pub const #name: &'static str = #string;
-        };
-
-        keywords.push(source);
-        keyword_strings.push(string);
-    }
-
-    let mut punct_marks = vec![];
-    let mut punct_mark_strings = vec![];
-    let mut escaped_punct_marks = vec![];
-    let mut escaped_punct_mark_strings = vec![];
-
-    for (name, repr) in Punctuation::reprs() {
-        let name = format_ident!("{}", name.as_ref().to_shouty_snake_case());
-        let doc = format!("{repr:?}");
-
-        let source = quote! {
-            #[doc = #doc]
-            pub const #name: &'static str = #repr;
-        };
-
-        punct_marks.push(source);
-        punct_mark_strings.push(repr);
-
-        let escaped = guano_common::regex::escape(repr);
-        let doc = format!("{doc} regex");
-
-        let source = quote! {
-            #[doc = #doc]
-            pub const #name: &'static str = #escaped;
-        };
-
-        escaped_punct_marks.push(source);
-        escaped_punct_mark_strings.push(escaped);
-    }
+    let kw_consts = Keyword::consts();
+    let punct_consts = Punctuation::consts();
 
     let source = quote! {
-        #[doc = "Keyword constants"]
-        pub mod keyword {
-            #[doc = "List of all keyword string regexs"]
-            pub const ALL: &'static [&'static str] = &[#(#keyword_strings,)*];
+        #kw_consts
 
-            #(#keywords)*
-        }
-
-        #[doc = "Punctuation constants"]
-        pub mod punctuation {
-            #[doc = "Punctuation constants but escaped for use in a regex"]
-            pub mod regex {
-                #[doc = "List of all punctuation mark strings"]
-                pub const ALL: &'static [&'static str] = &[#(#escaped_punct_mark_strings,)*];
-
-                #(#escaped_punct_marks)*
-            }
-
-            #[doc = "List of all punctuation mark strings"]
-            pub const ALL: &'static [&'static str] = &[#(#punct_mark_strings,)*];
-
-            #(#punct_marks)*
-        }
+        #punct_consts
     };
 
     write_source(file, source);
