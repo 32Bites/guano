@@ -66,7 +66,6 @@ impl Literal {
     }
 }
 
-
 impl BinaryExpr {
     pub fn lhs(&self) -> Option<Expr> {
         self.exprs().next()

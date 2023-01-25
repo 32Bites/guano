@@ -1,6 +1,6 @@
 use guano_common::rowan::TextRange;
 
-use crate::ast::parsing::{Parser, ParseContext};
+use crate::ast::parsing::{ParseContext, Parser};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Spanned<P> {

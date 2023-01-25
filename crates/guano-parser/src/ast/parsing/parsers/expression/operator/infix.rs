@@ -6,13 +6,18 @@ use crate::ast::parsing::{
     error::{Error, ErrorKind, Res},
     parsers::{
         expression::pratt::{Associativity, Infix, Power},
-        punctuation::punctuation, ignorable::eat_ignorable,
+        ignorable::eat_ignorable,
+        punctuation::punctuation,
     },
     ParseContext, Parser,
 };
 
 pub fn binary_op<'source>(context: &mut ParseContext<'source>) -> Res<'source, (Node, BinaryKind)> {
-    let (mark, span) = punctuation.prefixed(eat_ignorable).spanned().peek().parse(context)?;
+    let (mark, span) = punctuation
+        .prefixed(eat_ignorable)
+        .spanned()
+        .peek()
+        .parse(context)?;
     let kind = SyntaxKind::from_u16(mark.kind().0).unwrap();
     if let Some(kind) = BinaryKind::from_syntax(kind) {
         context.advance_byte(u32::from(span.len()) as usize)?;

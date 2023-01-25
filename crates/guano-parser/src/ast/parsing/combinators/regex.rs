@@ -1,9 +1,6 @@
 use guano_common::rowan::TextRange;
 
-use crate::ast::parsing::{
-    error::Error,
-    Parser, ParseContext, regex_registry::REGEX_REGISTRY,
-};
+use crate::ast::parsing::{error::Error, regex_registry::REGEX_REGISTRY, ParseContext, Parser};
 
 use super::errors::CombinatorError;
 

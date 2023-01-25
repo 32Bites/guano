@@ -1,6 +1,6 @@
 use impl_trait_for_tuples::impl_for_tuples;
 
-use crate::ast::parsing::{Parser, ParseContext};
+use crate::ast::parsing::{ParseContext, Parser};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<T> {
@@ -40,10 +40,7 @@ impl<'source, E> TupleTrait<'source> for Tuple {
     type Error = E;
     for_tuples!( type Output = ( #(Tuple::Output ),* ); );
 
-    fn tuple_parse(
-        self,
-        context: &mut ParseContext<'source>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn tuple_parse(self, context: &mut ParseContext<'source>) -> Result<Self::Output, Self::Error> {
         let output = for_tuples!( ( #( Tuple::parse(self.Tuple, context)? ),* ) );
 
         Ok(output)

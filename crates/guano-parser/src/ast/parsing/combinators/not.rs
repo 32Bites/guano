@@ -1,9 +1,6 @@
-use crate::ast::parsing::{
-    error::Error,
-    Parser, ParseContext,
-};
+use crate::ast::parsing::{error::Error, ParseContext, Parser};
 
-use super::{Combinators, errors::CombinatorError};
+use super::{errors::CombinatorError, Combinators};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Not<P> {

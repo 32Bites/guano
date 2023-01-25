@@ -77,13 +77,13 @@ impl Keyword {
         let mut syntax_names = vec![];
         let mut arms = vec![];
         let mut match_arms = vec![];
-    
+
         for keyword in Keyword::VARIANTS {
             let string = keyword.to_lowercase();
             let name = format_ident!("{}", keyword.to_shouty_snake_case());
             let syntax_name = format_ident!("KW_{name}");
             let doc = format!("{string:?} keyword");
-    
+
             let source = quote! {
                 #[doc = #doc]
                 #name,

@@ -1,4 +1,4 @@
-use crate::ast::parsing::{error::Error, Parser, ParseContext};
+use crate::ast::parsing::{error::Error, ParseContext, Parser};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Count<P> {

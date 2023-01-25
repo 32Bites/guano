@@ -13,7 +13,7 @@ pub enum CombinatorError<'source> {
     #[error("Was not supposed to parse {0:?}")]
     Not(Cow<'static, str>),
     #[error("Expected character {0:?}")]
-    Char(char)
+    Char(char),
 }
 
 impl CombinatorError<'_> {
@@ -24,7 +24,7 @@ impl CombinatorError<'_> {
             Tag(tag) => Tag(tag),
             Expect(e) => Expect(e.to_static()),
             Not(n) => Not(n),
-            Char(c) => Char(c)
+            Char(c) => Char(c),
         }
     }
 }
@@ -38,7 +38,7 @@ impl<'source> CombinatorError<'source> {
         Self::Tag(tag)
     }
 
-/*     pub fn chars(amount: u32) -> Self {
+    /*     pub fn chars(amount: u32) -> Self {
         Self::NeedChars(amount)
     } */
 

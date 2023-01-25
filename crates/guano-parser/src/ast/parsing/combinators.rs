@@ -126,7 +126,7 @@ pub trait Combinators<'source>: Parser<'source> {
     {
         between(prefix, self, suffix)
     }
-    
+
     #[inline]
     fn map<F, T>(self, func: F) -> Map<Self, F>
     where

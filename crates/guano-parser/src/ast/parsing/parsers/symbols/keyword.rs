@@ -1,6 +1,13 @@
-use guano_syntax::{Node, consts::{self, Keyword}, leaf};
+use guano_syntax::{
+    consts::{self, Keyword},
+    leaf, Node,
+};
 
-use crate::ast::parsing::{ParseContext, error::{Res, ErrorKind, Error}, combinators::Combinators, Parser};
+use crate::ast::parsing::{
+    combinators::Combinators,
+    error::{Error, ErrorKind, Res},
+    ParseContext, Parser,
+};
 
 use super::iden::raw_iden;
 

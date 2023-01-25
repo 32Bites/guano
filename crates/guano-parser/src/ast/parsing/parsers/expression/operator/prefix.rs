@@ -1,10 +1,14 @@
-use guano_common::{rowan::ast::AstNode, num::traits::FromPrimitive};
-use guano_syntax::{nodes::UnaryOp, Node, SyntaxKind, node};
+use guano_common::{num::traits::FromPrimitive, rowan::ast::AstNode};
+use guano_syntax::{node, nodes::UnaryOp, Node, SyntaxKind};
 
 use crate::ast::parsing::{
-    error::{Res, ErrorKind, Error},
-    parsers::{expression::pratt::{Power, Prefix}, punctuation::punctuation},
-    ParseContext, combinators::Combinators, Parser,
+    combinators::Combinators,
+    error::{Error, ErrorKind, Res},
+    parsers::{
+        expression::pratt::{Power, Prefix},
+        punctuation::punctuation,
+    },
+    ParseContext, Parser,
 };
 
 pub fn unary_op<'source>(context: &mut ParseContext<'source>) -> Res<'source, (Node, UnaryKind)> {
@@ -42,7 +46,7 @@ impl UnaryKind {
         match kind {
             SyntaxKind::MINUS => Some(Self::Negate),
             SyntaxKind::BANG => Some(Self::Not),
-            _ => None
+            _ => None,
         }
     }
 }

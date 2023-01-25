@@ -30,7 +30,8 @@ impl<'source> Parser<'source> for consts::Punctuation {
 
             Ok(punct)
         } else {
-            let kind = ErrorKind::String(format!("Expected punctuation {:?}", self.as_str()).into());
+            let kind =
+                ErrorKind::String(format!("Expected punctuation {:?}", self.as_str()).into());
             Err(Error::spanned(context.span(), kind))
         }
     }

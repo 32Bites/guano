@@ -1,4 +1,4 @@
-use crate::ast::parsing::{Parser, ParseContext};
+use crate::ast::parsing::{ParseContext, Parser};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Optional<P> {

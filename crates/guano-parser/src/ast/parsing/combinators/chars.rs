@@ -1,9 +1,6 @@
 use guano_common::rowan::TextRange;
 
-use crate::ast::parsing::{
-    error::Error,
-    ParseContext, Parser,
-};
+use crate::ast::parsing::{error::Error, ParseContext, Parser};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Chars {
