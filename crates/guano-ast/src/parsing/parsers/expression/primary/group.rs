@@ -1,4 +1,4 @@
-use guano_syntax::{consts::Punctuation, node, Node, SyntaxKind};
+use guano_syntax::{consts::Punctuation, node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{tuple, Combinators},
@@ -7,7 +7,7 @@ use crate::parsing::{
     ParseContext, Parser,
 };
 
-pub fn group_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn group_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (left_paren, (left_ws, expr, right_ws), right_paren) = tuple((
         Punctuation::LEFT_PAREN,
         expr.expect("Expected expression").padded(),

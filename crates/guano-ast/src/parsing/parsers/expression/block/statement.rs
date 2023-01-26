@@ -1,18 +1,18 @@
 use guano_common::rowan::Language;
-use guano_syntax::{consts::Punctuation, node, Lang, Node, SyntaxKind};
+use guano_syntax::{consts::Punctuation, node, Child, Lang, SyntaxKind};
 
 use crate::parsing::{
     combinators::{alternation, Combinators},
     error::Res,
-    parsers::{declaration::var::var, expression::expr, ignorable::eat_ignorable},
+    parsers::{declaration::variable::var, expression::expr, ignorable::eat_ignorable},
     ParseContext, Parser,
 };
 
-pub fn statement<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn statement<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((expr_statement, var)).parse(context)
 }
 
-pub fn expr_statement<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn expr_statement<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let expr = expr(context)?;
 
     let is_block = match expr.as_node() {

@@ -1,6 +1,6 @@
 use guano_syntax::{
     consts::{Keyword, Punctuation},
-    node, Node, SyntaxKind,
+    node, Child, SyntaxKind,
 };
 
 use crate::parsing::{
@@ -9,26 +9,15 @@ use crate::parsing::{
     parsers::{
         expression::expr,
         ignorable::eat_ignorable,
-        symbols::{iden::iden, ty::ty},
+        symbols::{identifier::iden, ty::ty},
     },
     ParseContext, Parser,
 };
 
-pub fn var<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
-    let mut children = vec![];
-    let (qualifiers, kind, ws, name) = tuple((
-        var_qualifiers.then(eat_ignorable).optional(),
-        var_kind,
-        eat_ignorable,
-        iden.expected(),
-    ))
-    .parse(context)?;
+pub fn var<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
+    let mut children = var_qualifiers(context)?;
 
-    if let Some((qualifiers, ws)) = qualifiers {
-        children.push(qualifiers);
-        children.extend(ws);
-    }
-
+    let (kind, ws, name) = tuple((var_kind, eat_ignorable, iden.expected())).parse(context)?;
     children.push(kind);
     children.extend(ws);
     children.push(name);
@@ -57,7 +46,7 @@ pub fn var<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
     Ok(node(SyntaxKind::VAR, children))
 }
 
-pub fn var_value<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn var_value<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (eq, ws, expr) = tuple((Punctuation::EQ, eat_ignorable, expr)).parse(context)?;
 
     let mut children = vec![eq];
@@ -67,7 +56,7 @@ pub fn var_value<'source>(context: &mut ParseContext<'source>) -> Res<'source, N
     Ok(node(SyntaxKind::VAR_VALUE, children))
 }
 
-pub fn var_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn var_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (colon, ws, ty) = tuple((Punctuation::COLON, eat_ignorable, ty)).parse(context)?;
 
     let mut children = vec![colon];
@@ -77,29 +66,27 @@ pub fn var_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, No
     Ok(node(SyntaxKind::VAR_TYPE, children))
 }
 
-pub fn var_kind<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn var_kind<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let kw = alternation((Keyword::VAR, Keyword::LET)).parse(context)?;
 
     Ok(node(SyntaxKind::VAR_KIND, vec![kw]))
 }
 
-pub fn var_qualifiers<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
-    let has_pub = Keyword::PUB
-        .then(eat_ignorable.then(Keyword::STATIC).optional())
-        .map(|(first, rest)| {
-            let mut children = vec![first];
+pub fn var_qualifiers<'source>(context: &mut ParseContext<'source>) -> Res<'source, Vec<Child>> {
+    let mut children = vec![];
+    if let Some((kw, ws)) = Keyword::PUB.then(eat_ignorable).optional().parse(context)? {
+        children.push(kw);
+        children.extend(ws);
+    }
 
-            if let Some((ws, other)) = rest {
-                children.extend(ws);
-                children.push(other);
-            }
+    if let Some((kw, ws)) = Keyword::STATIC
+        .then(eat_ignorable)
+        .optional()
+        .parse(context)?
+    {
+        children.push(kw);
+        children.extend(ws);
+    }
 
-            children
-        });
-    let only_static = Keyword::STATIC.map(|t| vec![t]);
-
-    let children = only_static.or(has_pub).parse(context)?;
-    let qualifiers = node(SyntaxKind::VAR_QUALIFIERS, children);
-
-    Ok(qualifiers)
+    Ok(children)
 }

@@ -1,4 +1,4 @@
-use guano_syntax::{node, Node, SyntaxKind};
+use guano_syntax::{node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{tuple, Combinators},
@@ -13,13 +13,13 @@ use super::{
 };
 
 #[inline]
-pub fn pratt<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn pratt<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     pratt_expr(Power::min()).parse(context)
 }
 
 fn pratt_expr<'source>(
     min_bp: Power,
-) -> impl FnMut(&mut ParseContext<'source>) -> Res<'source, Node> {
+) -> impl FnMut(&mut ParseContext<'source>) -> Res<'source, Child> {
     move |context| {
         let mut lhs = pratt_prefix(context)?;
 
@@ -45,7 +45,7 @@ fn pratt_expr<'source>(
 
 fn pratt_postfix<'source>(
     context: &mut ParseContext<'source>,
-    lhs: &mut Node,
+    lhs: &mut Child,
     min_bp: Power,
 ) -> Res<'source, Action> {
     let operator = postfix_operator.peek().optional().parse(context)?;
@@ -67,7 +67,7 @@ fn pratt_postfix<'source>(
 
 fn pratt_infix<'source>(
     context: &mut ParseContext<'source>,
-    lhs: &mut Node,
+    lhs: &mut Child,
     min_bp: Power,
 ) -> Res<'source, Action> {
     let operator = tuple((eat_ignorable, binary_op, eat_ignorable))
@@ -108,7 +108,7 @@ fn pratt_infix<'source>(
     }
 }
 
-fn pratt_prefix<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+fn pratt_prefix<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let maybe_operator = unary_op.then(eat_ignorable).optional().parse(context)?;
 
     match maybe_operator {

@@ -1,4 +1,4 @@
-use guano_syntax::{consts::Punctuation, node, Node, SyntaxKind};
+use guano_syntax::{consts::Punctuation, node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{tuple, Combinators},
@@ -10,7 +10,7 @@ use crate::parsing::{
     ParseContext, Parser,
 };
 
-pub fn list_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn list_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (l_brack, body, r_brack) = tuple((
         Punctuation::LEFT_BRACK,
         list_expr_items,
@@ -26,30 +26,30 @@ pub fn list_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, N
 }
 
 /// NOTE: Eats the surrounding whitespace and comments.
-pub fn list_expr_items<'source>(context: &mut ParseContext<'source>) -> Res<'source, Vec<Node>> {
+pub fn list_expr_items<'source>(context: &mut ParseContext<'source>) -> Res<'source, Vec<Child>> {
     let other_exprs = eat_ignorable.then(list_expr_item).repeated();
     let (l_ws, exprs, r_ws) = tuple((expr, other_exprs))
         .optional()
         .padded()
         .parse(context)?;
 
-    let mut nodes = l_ws;
+    let mut items = l_ws;
     if let Some((mut first_expr, other_exprs)) = exprs {
         first_expr = node(SyntaxKind::LIST_EXPR_ITEM, vec![first_expr]);
-        nodes.push(first_expr);
+        items.push(first_expr);
 
         for (ws, expr) in other_exprs {
-            nodes.extend(ws);
-            nodes.push(expr);
+            items.extend(ws);
+            items.push(expr);
         }
     }
 
-    nodes.extend(r_ws);
+    items.extend(r_ws);
 
-    Ok(nodes)
+    Ok(items)
 }
 
-pub fn list_expr_item<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn list_expr_item<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (com, ws, expr) = tuple((
         Punctuation::COMMA,
         eat_ignorable,

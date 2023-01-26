@@ -1,4 +1,4 @@
-use guano_syntax::{leaf, Node, SyntaxKind};
+use guano_syntax::{leaf, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{regex, Combinators},
@@ -11,7 +11,7 @@ pub fn raw_iden<'source>(context: &mut ParseContext<'source>) -> Res<'source> {
     regex(r"^[_a-zA-Z][_0-9a-zA-Z]*").parse(context)
 }
 
-pub fn iden<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn iden<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (iden, span) = raw_iden.spanned().parse(context)?;
     let is_keyword = guano_syntax::consts::Keyword::ALL
         .into_iter()

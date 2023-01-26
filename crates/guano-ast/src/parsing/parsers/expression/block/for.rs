@@ -1,4 +1,4 @@
-use guano_syntax::{consts::Keyword, node, Node, SyntaxKind};
+use guano_syntax::{consts::Keyword, node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{tuple, Combinators},
@@ -6,14 +6,14 @@ use crate::parsing::{
     parsers::{
         expression::expr,
         ignorable::{eat_ignorable, IgnorableParser},
-        symbols::iden::iden,
+        symbols::identifier::iden,
     },
     ParseContext, Parser,
 };
 
 use super::block;
 
-pub fn for_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn for_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (for_kw, (l_ws, iden, r_ws), in_kw) = tuple((
         Keyword::FOR,
         iden.expected().padded(),

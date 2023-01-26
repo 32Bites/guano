@@ -10,7 +10,7 @@ pub use r#loop::*;
 pub use r#while::*;
 pub use statement::*;
 
-use guano_syntax::{consts::Punctuation, node, Node, SyntaxKind};
+use guano_syntax::{consts::Punctuation, node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{tuple, Combinators},
@@ -21,7 +21,7 @@ use crate::parsing::{
 
 use statement::statement;
 
-pub fn block<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn block<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (l_curly, statements, end_expr, r_curly) = tuple((
         Punctuation::LEFT_CURLY,
         statement.padded().repeated(),

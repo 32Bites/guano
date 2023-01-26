@@ -1,4 +1,4 @@
-use guano_syntax::{leaf, Node, SyntaxKind};
+use guano_syntax::{leaf, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{regex, Combinators},
@@ -32,7 +32,7 @@ pub mod regex {
     pub const STRING_LAZY: &'static str = r#"^"(?s:\\.|[^"\\])*""#;
 }
 
-pub fn char_lazy<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn char_lazy<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     regex(self::regex::CHAR_LAZY)
         .map(|text| leaf(SyntaxKind::LIT_CHAR, text))
         .parse(context)

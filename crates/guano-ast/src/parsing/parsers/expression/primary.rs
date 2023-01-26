@@ -1,4 +1,4 @@
-use guano_syntax::Node;
+use guano_syntax::Child;
 
 use crate::parsing::{
     combinators::alternation, error::Res, parsers::symbols::path, ParseContext, Parser,
@@ -13,7 +13,7 @@ pub mod keyword;
 pub mod list;
 pub mod literal;
 
-pub fn primary<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn primary<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((
         block,
         group::group_expr,

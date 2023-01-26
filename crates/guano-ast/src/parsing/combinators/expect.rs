@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use guano_common::rowan::TextRange;
-use guano_syntax::{leaf, Node, SyntaxKind};
+use guano_syntax::{leaf, Child, SyntaxKind};
 
 use crate::parsing::{error::Error, ParseContext, Parser};
 
@@ -16,7 +16,7 @@ pub struct Expect<'source, P> {
 #[inline]
 pub fn expect<'source, P>(parser: P, message: impl Into<Cow<'source, str>>) -> Expect<'source, P>
 where
-    P: Parser<'source, Output = Node, Error = Error<'source>>,
+    P: Parser<'source, Output = Child, Error = Error<'source>>,
 {
     Expect {
         parser,
@@ -27,7 +27,7 @@ where
 #[inline]
 pub fn expected<'source, P>(parser: P) -> Expect<'source, P>
 where
-    P: Parser<'source, Output = Node, Error = Error<'source>>,
+    P: Parser<'source, Output = Child, Error = Error<'source>>,
 {
     Expect {
         parser,
@@ -37,9 +37,9 @@ where
 
 impl<'source, P> Parser<'source> for Expect<'source, P>
 where
-    P: Parser<'source, Error = Error<'source>, Output = Node>,
+    P: Parser<'source, Error = Error<'source>, Output = Child>,
 {
-    type Output = Node;
+    type Output = Child;
     type Error = Error<'source>;
 
     fn parse(self, context: &mut ParseContext<'source>) -> Result<Self::Output, Self::Error> {

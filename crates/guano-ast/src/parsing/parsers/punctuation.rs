@@ -1,4 +1,4 @@
-use guano_syntax::{consts, leaf, Node};
+use guano_syntax::{consts, leaf, Child};
 
 use crate::parsing::{
     combinators::{tag, Combinators},
@@ -6,7 +6,7 @@ use crate::parsing::{
     ParseContext, Parser,
 };
 
-pub fn punctuation<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn punctuation<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     for mark in consts::Punctuation::ALL {
         match tag(mark.as_str()).optional().parse(context)? {
             Some(text) => return Ok(leaf(mark.syntax_kind(), text)),
@@ -20,7 +20,7 @@ pub fn punctuation<'source>(context: &mut ParseContext<'source>) -> Res<'source,
 }
 
 impl<'source> Parser<'source> for consts::Punctuation {
-    type Output = Node;
+    type Output = Child;
     type Error = Error<'source>;
 
     fn parse(self, context: &mut ParseContext<'source>) -> Result<Self::Output, Self::Error> {
@@ -38,12 +38,12 @@ impl<'source> Parser<'source> for consts::Punctuation {
 }
 
 pub trait PunctuationExt<'source> {
-    fn punctuation(&mut self) -> Res<'source, Node>;
+    fn punctuation(&mut self) -> Res<'source, Child>;
 }
 
 impl<'source> PunctuationExt<'source> for ParseContext<'source> {
     #[inline]
-    fn punctuation(&mut self) -> Res<'source, Node> {
+    fn punctuation(&mut self) -> Res<'source, Child> {
         punctuation(self)
     }
 }

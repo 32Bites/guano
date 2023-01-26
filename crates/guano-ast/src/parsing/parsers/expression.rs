@@ -1,4 +1,4 @@
-use guano_syntax::{nodes::Expr, Node};
+use guano_syntax::{nodes::Expr, Child};
 
 use crate::parsing::{combinators::alternation, error::Res, ParseContext, Parser};
 
@@ -9,7 +9,7 @@ pub mod operator;
 pub mod pratt;
 pub mod primary;
 
-pub fn expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((pratt::pratt, loop_expr, for_expr, while_expr, if_expr)).parse(context)
 }
 

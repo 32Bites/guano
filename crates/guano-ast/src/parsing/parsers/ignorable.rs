@@ -1,4 +1,4 @@
-use guano_syntax::Node;
+use guano_syntax::Child;
 
 use crate::parsing::{
     combinators::{alternation, tuple, types::Tuple, Combinators},
@@ -9,25 +9,25 @@ use crate::parsing::{
 pub mod comment;
 pub mod whitespace;
 
-pub fn ignorable<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn ignorable<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((whitespace::whitespace, comment::comment)).parse(context)
 }
 
-pub fn eat_ignorable<'source>(context: &mut ParseContext<'source>) -> Res<'source, Vec<Node>> {
+pub fn eat_ignorable<'source>(context: &mut ParseContext<'source>) -> Res<'source, Vec<Child>> {
     ignorable.repeated().parse(context)
 }
 
 pub trait IgnorableContext<'source> {
-    fn eat_ignorable(&mut self) -> Res<'source, Vec<Node>>;
+    fn eat_ignorable(&mut self) -> Res<'source, Vec<Child>>;
 }
 
 impl<'source> IgnorableContext<'source> for ParseContext<'source> {
-    fn eat_ignorable(&mut self) -> Res<'source, Vec<Node>> {
+    fn eat_ignorable(&mut self) -> Res<'source, Vec<Child>> {
         eat_ignorable(self)
     }
 }
 
-type IgnoreFn<'source> = fn(&mut ParseContext<'source>) -> Res<'source, Vec<Node>>;
+type IgnoreFn<'source> = fn(&mut ParseContext<'source>) -> Res<'source, Vec<Child>>;
 
 pub trait IgnorableParser<'source>: Parser<'source, Error = Error<'source>> {
     #[inline]

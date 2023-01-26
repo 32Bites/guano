@@ -1,5 +1,6 @@
 include!(concat!(env!("OUT_DIR"), "/generated_nodes.rs"));
 
+use crate::tokens::Iden;
 use std::iter::FusedIterator;
 use std::iter::Peekable;
 
@@ -50,22 +51,27 @@ use crate::AstToken;
 use super::tokens;
 
 impl Literal {
+    #[inline]
     pub fn float(&self) -> Option<tokens::Float> {
         self.float_token().and_then(tokens::Float::cast)
     }
 
+    #[inline]
     pub fn integer(&self) -> Option<tokens::Integer> {
         self.integer_token().and_then(tokens::Integer::cast)
     }
 
+    #[inline]
     pub fn char(&self) -> Option<tokens::Char> {
         self.char_token().and_then(tokens::Char::cast)
     }
 
+    #[inline]
     pub fn string(&self) -> Option<tokens::String> {
         self.string_token().and_then(tokens::String::cast)
     }
 
+    #[inline]
     pub fn boolean(&self) -> Option<bool> {
         self.true_token()
             .map(|_| true)
@@ -74,72 +80,121 @@ impl Literal {
 }
 
 impl BinaryExpr {
+    #[inline]
     pub fn lhs(&self) -> Option<Expr> {
         self.exprs().next()
     }
 
+    #[inline]
     pub fn rhs(&self) -> Option<Expr> {
         self.exprs().nth(1)
     }
 }
 
 impl IndexExpr {
+    #[inline]
     pub fn expr(&self) -> Option<Expr> {
         self.exprs().next()
     }
 
+    #[inline]
     pub fn index(&self) -> Option<Expr> {
         self.exprs().nth(1)
     }
 }
 
+impl Func {
+    #[inline]
+    pub fn is_pub(&self) -> bool {
+        self.pub_token().is_some()
+    }
+
+    #[inline]
+    pub fn is_veto(&self) -> bool {
+        self.veto_token().is_some()
+    }
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.static_token().is_some()
+    }
+
+    #[inline]
+    pub fn name(&self) -> Option<Iden> {
+        self.iden_token().and_then(|i| Iden::cast(i))
+    }
+
+    // Return an iterator over all valid parameters
+    pub fn params(&self) -> Option<impl Iterator<Item = (Iden, Type)>> {
+        self.func_params().map(|p| {
+            p.func_params().filter_map(|p| {
+                let name = p.iden_token().and_then(|i| Iden::cast(i));
+
+                if let (Some(name), Some(ty)) = (name, p.ty()) {
+                    Some((name, ty))
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    #[inline]
+    pub fn ty(&self) -> Option<Type> {
+        self.func_type().and_then(|t| t.ty())
+    }
+
+    #[inline]
+    pub fn block(&self) -> Option<Block> {
+        self.func_body().and_then(|b| b.block())
+    }
+}
+
 impl VarKind {
+    #[inline]
     pub fn is_let(&self) -> bool {
         self.0.kind() == SyntaxKind::KW_LET
     }
 
+    #[inline]
     pub fn is_var(&self) -> bool {
         self.0.kind() == SyntaxKind::KW_VAR
     }
 }
 
-impl VarQualifiers {
-    pub fn has_pub(&self) -> bool {
+impl Var {
+    #[inline]
+    pub fn is_pub(&self) -> bool {
         self.pub_token().is_some()
     }
 
-    pub fn has_static(&self) -> bool {
-        self.static_token().is_some()
-    }
-}
-
-impl Var {
-    pub fn is_pub(&self) -> bool {
-        self.var_qualifiers().map_or(false, |q| q.has_pub())
-    }
-
+    #[inline]
     pub fn is_static(&self) -> bool {
-        self.var_qualifiers().map_or(false, |q| q.has_static())
+        self.pub_token().is_some()
     }
 
+    #[inline]
     pub fn is_let(&self) -> bool {
         self.var_kind().map_or(false, |k| k.is_let())
     }
 
+    #[inline]
     pub fn is_var(&self) -> bool {
         self.var_kind().map_or(false, |k| k.is_var())
     }
 
+    #[inline]
     pub fn ty(&self) -> Option<Type> {
         self.var_type().and_then(|t| t.ty())
     }
 
+    #[inline]
     pub fn value(&self) -> Option<Expr> {
         self.var_value().and_then(|v| v.expr())
     }
 
-    pub fn name(&self) -> Option<super::tokens::Iden> {
-        self.iden_token().and_then(|t| super::tokens::Iden::cast(t))
+    #[inline]
+    pub fn name(&self) -> Option<Iden> {
+        self.iden_token().and_then(|t| Iden::cast(t))
     }
 }
 
@@ -153,6 +208,7 @@ impl Block {
         })
     }
 
+    #[inline]
     pub fn iter(&self) -> Statements {
         Statements {
             children: Some(self.statements().peekable()),

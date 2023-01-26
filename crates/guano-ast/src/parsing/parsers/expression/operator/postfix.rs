@@ -1,7 +1,7 @@
 use guano_common::num::traits::FromPrimitive;
 use guano_syntax::{
     consts::{Keyword, Punctuation},
-    node, Node, SyntaxKind,
+    node, Child, SyntaxKind,
 };
 
 use crate::parsing::{
@@ -14,7 +14,7 @@ use crate::parsing::{
             primary::list::list_expr_items,
         },
         ignorable::{eat_ignorable, IgnorableParser},
-        symbols::{iden::iden, ty::ty},
+        symbols::{identifier::iden, ty::ty},
     },
     ParseContext, Parser,
 };
@@ -31,7 +31,7 @@ pub enum PostfixKind {
 impl PostfixKind {
     pub fn parse_expr<'source>(
         &self,
-        lhs: &mut Node,
+        lhs: &mut Child,
         context: &mut ParseContext<'source>,
     ) -> Res<'source, ()> {
         match self {
@@ -43,7 +43,7 @@ impl PostfixKind {
         }
     }
 
-    fn call<'source>(lhs: &mut Node, context: &mut ParseContext<'source>) -> Res<'source, ()> {
+    fn call<'source>(lhs: &mut Child, context: &mut ParseContext<'source>) -> Res<'source, ()> {
         let (ws, left_paren, params, right_paren) = tuple((
             eat_ignorable,
             Punctuation::LEFT_PAREN,
@@ -70,7 +70,7 @@ impl PostfixKind {
 
     fn typed<'source>(
         is_cast: bool,
-        lhs: &mut Node,
+        lhs: &mut Child,
         context: &mut ParseContext<'source>,
     ) -> Res<'source, ()> {
         let ((r_ws, kw, l_ws), ty) = tuple((
@@ -101,7 +101,7 @@ impl PostfixKind {
         Ok(())
     }
 
-    fn index<'source>(lhs: &mut Node, context: &mut ParseContext<'source>) -> Res<'source, ()> {
+    fn index<'source>(lhs: &mut Child, context: &mut ParseContext<'source>) -> Res<'source, ()> {
         let (first_ws, left_brack, (left_ws, expr, right_ws), right_brack) = tuple((
             eat_ignorable,
             Punctuation::LEFT_BRACK,
@@ -128,7 +128,7 @@ impl PostfixKind {
         Ok(())
     }
 
-    fn field<'source>(lhs: &mut Node, context: &mut ParseContext<'source>) -> Res<'source, ()> {
+    fn field<'source>(lhs: &mut Child, context: &mut ParseContext<'source>) -> Res<'source, ()> {
         let (left_ws, dot, right_ws, rhs) = tuple((
             eat_ignorable,
             Punctuation::DOT,

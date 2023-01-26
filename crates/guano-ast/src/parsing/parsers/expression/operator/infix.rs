@@ -1,5 +1,5 @@
 use guano_common::{num::traits::FromPrimitive, rowan::ast::AstNode};
-use guano_syntax::{node, nodes::BinaryOp, Node, SyntaxKind};
+use guano_syntax::{node, nodes::BinaryOp, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::Combinators,
@@ -12,7 +12,9 @@ use crate::parsing::{
     ParseContext, Parser,
 };
 
-pub fn binary_op<'source>(context: &mut ParseContext<'source>) -> Res<'source, (Node, BinaryKind)> {
+pub fn binary_op<'source>(
+    context: &mut ParseContext<'source>,
+) -> Res<'source, (Child, BinaryKind)> {
     let (mark, span) = punctuation
         .prefixed(eat_ignorable)
         .spanned()

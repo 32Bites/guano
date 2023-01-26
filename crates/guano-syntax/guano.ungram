@@ -76,13 +76,11 @@ Statement = ExprStatement |
     Var | 
     Import
 
-Func = 'pub'? FuncQualifiers
+Func = 'pub'? 'veto'? 'static'?
     'fun' 'iden' FuncParams?
     FuncType? FuncBody
-
-FuncQualifiers = 'veto'? 'static'?
-FuncParam = 'iden' ':' Type ','?
 FuncParams = '(' FuncParam* ')'
+FuncParam = ','? 'iden' ':' Type
 FuncType = '->' Type
 FuncBody = Block | ';'
 
@@ -98,10 +96,9 @@ ProtoExtends = ':'
 ProtoExtension = '+'? Path
 ProtoBody = '{' Func* '}'
 
-Var = VarQualifiers? VarKind 
+Var = 'pub'? 'static'? VarKind 
     'iden' VarType?
     VarValue? ';'
-VarQualifiers = 'pub'? 'static'?
 VarType = ':' Type
 VarValue = '=' Expr
 VarKind = 'var' | 'let'

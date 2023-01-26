@@ -1,5 +1,5 @@
 use guano_common::{num::traits::FromPrimitive, rowan::ast::AstNode};
-use guano_syntax::{node, nodes::UnaryOp, Node, SyntaxKind};
+use guano_syntax::{node, nodes::UnaryOp, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::Combinators,
@@ -11,7 +11,7 @@ use crate::parsing::{
     ParseContext, Parser,
 };
 
-pub fn unary_op<'source>(context: &mut ParseContext<'source>) -> Res<'source, (Node, UnaryKind)> {
+pub fn unary_op<'source>(context: &mut ParseContext<'source>) -> Res<'source, (Child, UnaryKind)> {
     let (mark, span) = punctuation.spanned().peek().parse(context)?;
     let kind = SyntaxKind::from_u16(mark.kind().0).unwrap();
 

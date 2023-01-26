@@ -14,6 +14,8 @@ pub enum CombinatorError<'source> {
     Not(Cow<'static, str>),
     #[error("Expected character {0:?}")]
     Char(char),
+    #[error("Output of child parser was a token rather than a node")]
+    Ast,
 }
 
 impl CombinatorError<'_> {
@@ -25,6 +27,7 @@ impl CombinatorError<'_> {
             Expect(e) => Expect(e.to_static()),
             Not(n) => Not(n),
             Char(c) => Char(c),
+            Ast => Ast,
         }
     }
 }

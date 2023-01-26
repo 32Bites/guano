@@ -1,4 +1,4 @@
-use guano_syntax::{consts::Keyword, node, Node, SyntaxKind};
+use guano_syntax::{consts::Keyword, node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{tuple, Combinators},
@@ -9,7 +9,7 @@ use crate::parsing::{
 
 use super::block;
 
-pub fn while_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn while_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (kw, (l_ws, cond, r_ws), block) =
         tuple((Keyword::WHILE, expr.expected().padded(), block.expected())).parse(context)?;
 

@@ -1,4 +1,5 @@
 mod alternation;
+mod ast;
 mod between;
 mod char;
 mod chars;
@@ -20,6 +21,7 @@ pub mod errors;
 
 pub mod types {
     pub use super::alternation::Alternation;
+    pub use super::ast::Ast;
     pub use super::between::Between;
     pub use super::char::Char;
     pub use super::chars::Chars;
@@ -46,6 +48,8 @@ pub mod traits {
 use std::borrow::Cow;
 
 pub use self::alternation::alternation;
+use self::ast::ast;
+pub use self::ast::Ast;
 pub use self::between::between;
 pub use self::char::char;
 pub use self::chars::chars;
@@ -68,7 +72,7 @@ use super::error::Error;
 use super::Parser;
 
 use self::traits::{AlternationTrait, TupleTrait};
-use guano_syntax::Node;
+use guano_syntax::Child;
 use types::*;
 
 pub trait Combinators<'source>: Parser<'source> {
@@ -138,6 +142,14 @@ pub trait Combinators<'source>: Parser<'source> {
     }
 
     #[inline]
+    fn ast(self) -> Ast<Self>
+    where
+        Self: Parser<'source, Output = Child, Error = Error<'source>>,
+    {
+        ast(self)
+    }
+
+    #[inline]
     fn not(self) -> Not<Self> {
         not(self)
     }
@@ -170,7 +182,7 @@ pub trait Combinators<'source>: Parser<'source> {
     #[inline]
     fn expect(self, message: impl Into<Cow<'source, str>>) -> Expect<'source, Self>
     where
-        Self: Parser<'source, Output = Node, Error = Error<'source>>,
+        Self: Parser<'source, Output = Child, Error = Error<'source>>,
     {
         expect(self, message)
     }
@@ -178,7 +190,7 @@ pub trait Combinators<'source>: Parser<'source> {
     #[inline]
     fn expected(self) -> Expect<'source, Self>
     where
-        Self: Parser<'source, Output = Node, Error = Error<'source>>,
+        Self: Parser<'source, Output = Child, Error = Error<'source>>,
     {
         expected(self)
     }

@@ -1,6 +1,7 @@
 use std::{borrow::Cow, rc::Rc};
 
 use guano_common::rowan::{TextLen, TextRange, TextSize};
+use guano_syntax::{Child, SyntaxNode};
 
 use super::{
     combinators::{regex, Combinators},
@@ -35,6 +36,16 @@ impl<'source> ParseContext<'source> {
         P: Parser<'source>,
     {
         parser.parse(self)
+    }
+
+    #[inline]
+    pub fn parse_ast<P>(&mut self, parser: P) -> Result<Option<SyntaxNode>, P::Error>
+    where
+        P: Parser<'source, Output = Child>,
+    {
+        parser
+            .parse(self)
+            .map(|c| c.into_node().map(|n| SyntaxNode::new_root(n)))
     }
 
     #[inline]
@@ -166,6 +177,18 @@ pub trait Parser<'source>: Sized {
 
     fn parse(self, context: &mut ParseContext<'source>) -> Result<Self::Output, Self::Error>;
 
+    #[inline]
+    fn parse_ast(
+        self,
+        context: &mut ParseContext<'source>,
+    ) -> Result<Option<SyntaxNode>, Self::Error>
+    where
+        Self: Parser<'source, Output = Child>,
+    {
+        context.parse_ast(self)
+    }
+
+    #[inline]
     fn name(&self) -> Cow<'static, str> {
         std::any::type_name::<Self>().into()
     }

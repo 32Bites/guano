@@ -1,4 +1,4 @@
-use guano_syntax::{node, Node, SyntaxKind};
+use guano_syntax::{node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{alternation, Combinators},
@@ -11,7 +11,7 @@ pub mod keyword;
 pub mod number;
 pub mod string;
 
-pub fn literal<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn literal<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((
         keyword::keyword,
         self::char::char_lazy,

@@ -1,4 +1,4 @@
-use guano_syntax::{consts::Keyword, node, Node, SyntaxKind};
+use guano_syntax::{consts::Keyword, node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::Combinators,
@@ -7,7 +7,7 @@ use crate::parsing::{
     ParseContext, Parser,
 };
 
-pub fn return_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn return_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (kw, expr) = Keyword::RETURN
         .then(eat_ignorable.then(expr).optional())
         .parse(context)?;
@@ -21,14 +21,14 @@ pub fn return_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source,
     Ok(node(SyntaxKind::RETURN_EXPR, children))
 }
 
-pub fn continue_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn continue_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     Ok(node(
         SyntaxKind::CONTINUE_EXPR,
         vec![Keyword::CONTINUE.parse(context)?],
     ))
 }
 
-pub fn break_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn break_expr<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     Ok(node(
         SyntaxKind::BREAK_EXPR,
         vec![Keyword::BREAK.parse(context)?],

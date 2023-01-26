@@ -1,8 +1,8 @@
-use guano_syntax::{consts::Keyword, Node};
+use guano_syntax::{consts::Keyword, Child};
 
 use crate::parsing::{combinators::alternation, error::Res, ParseContext, Parser};
 
-pub fn keyword<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn keyword<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((
         Keyword::TRUE,
         Keyword::FALSE,

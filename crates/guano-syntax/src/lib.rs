@@ -20,7 +20,7 @@ pub type SyntaxElement = rowan::SyntaxElement<Lang>;
 pub type SyntaxNodeChildren = rowan::SyntaxNodeChildren<Lang>;
 pub type SyntaxElementChildren = rowan::SyntaxElementChildren<Lang>;
 pub type PreorderWithTokens = rowan::api::PreorderWithTokens<Lang>;
-pub type Node = NodeOrToken<GreenNode, GreenToken>;
+pub type Child = NodeOrToken<GreenNode, GreenToken>;
 
 pub trait GreenNodeExt {
     fn is_block_expr(&self) -> bool;
@@ -45,16 +45,16 @@ impl rowan::Language for Lang {
 }
 
 /// Helper function for creating a leaf node
-pub fn leaf(kind: crate::SyntaxKind, text: &str) -> Node {
+pub fn leaf(kind: crate::SyntaxKind, text: &str) -> Child {
     NodeOrToken::Token(GreenToken::new(kind.into(), text))
 }
 
 /// Helper function for creating a node
-pub fn node(kind: crate::SyntaxKind, children: Vec<Node>) -> Node {
+pub fn node(kind: crate::SyntaxKind, children: Vec<Child>) -> Child {
     NodeOrToken::Node(GreenNode::new(kind.into(), children))
 }
 
-pub fn error(text: &str) -> Node {
+pub fn error(text: &str) -> Child {
     NodeOrToken::Token(GreenToken::new(SyntaxKind::ERROR.into(), text))
 }
 

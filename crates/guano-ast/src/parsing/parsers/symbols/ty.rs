@@ -1,4 +1,4 @@
-use guano_syntax::{consts::Punctuation, node, Node, SyntaxKind};
+use guano_syntax::{consts::Punctuation, node, Child, SyntaxKind};
 
 use crate::parsing::{
     combinators::{alternation, tuple, Combinators},
@@ -9,11 +9,11 @@ use crate::parsing::{
 
 use super::path::path;
 
-pub fn ty<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn ty<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     nilable_type(context)
 }
 
-pub fn nilable_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn nilable_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let mut lhs = primary_type(context)?;
 
     for (ws, ques) in eat_ignorable
@@ -35,11 +35,11 @@ pub fn nilable_type<'source>(context: &mut ParseContext<'source>) -> Res<'source
     Ok(lhs)
 }
 
-pub fn primary_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn primary_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((list_type, path_type)).parse(context)
 }
 
-pub fn list_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn list_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (l_brack, (l_ws, ty, r_ws), r_brack) = tuple((
         Punctuation::LEFT_BRACK,
         ty.padded(),
@@ -57,7 +57,7 @@ pub fn list_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, N
     Ok(list) // Ok(node(SyntaxKind::TYPE, vec![list]))
 }
 
-pub fn path_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn path_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let path = path(context)?;
 
     Ok(path) // Ok(node(SyntaxKind::TYPE, vec![path]))

@@ -1,6 +1,6 @@
 use guano_syntax::{
     consts::{self, Keyword},
-    leaf, Node,
+    leaf, Child,
 };
 
 use crate::parsing::{
@@ -9,9 +9,9 @@ use crate::parsing::{
     ParseContext, Parser,
 };
 
-use super::iden::raw_iden;
+use super::identifier::raw_iden;
 
-pub fn keyword<'source>(context: &mut ParseContext<'source>) -> Res<'source, Node> {
+pub fn keyword<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (raw_iden, span) = raw_iden.spanned().peek().parse(context)?;
 
     for keyword in consts::Keyword::ALL {
@@ -26,7 +26,7 @@ pub fn keyword<'source>(context: &mut ParseContext<'source>) -> Res<'source, Nod
 }
 
 impl<'source> Parser<'source> for Keyword {
-    type Output = Node;
+    type Output = Child;
     type Error = Error<'source>;
 
     fn parse(self, context: &mut ParseContext<'source>) -> Result<Self::Output, Self::Error> {
