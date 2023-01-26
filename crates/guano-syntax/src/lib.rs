@@ -22,6 +22,10 @@ pub type SyntaxElementChildren = rowan::SyntaxElementChildren<Lang>;
 pub type PreorderWithTokens = rowan::api::PreorderWithTokens<Lang>;
 pub type Node = NodeOrToken<GreenNode, GreenToken>;
 
+pub trait GreenNodeExt {
+    fn is_block_expr(&self) -> bool;
+}
+
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 /// Language type for use in [rowan]
 pub enum Lang {}
@@ -91,7 +95,7 @@ fn ws_filter(n: SyntaxElement) -> Option<tokens::Whitespace> {
     }
 }
 
-pub trait NodeExt: AstNode<Language = Lang> {
+pub trait AstNodeExt: AstNode<Language = Lang> {
     #[inline]
     fn comments(&self) -> CommentIter {
         self.syntax()
@@ -105,6 +109,13 @@ pub trait NodeExt: AstNode<Language = Lang> {
     }
 }
 
-impl<T: AstNode<Language = Lang>> NodeExt for T {}
+impl<T: AstNode<Language = Lang>> AstNodeExt for T {}
 
 include!(concat!(env!("OUT_DIR"), "/generated_lib.rs"));
+
+impl SyntaxKind {
+    pub fn is_block_expr(&self) -> bool {
+        use SyntaxKind::*;
+        matches!(self, BLOCK | IF_EXPR | FOR_EXPR | WHILE_EXPR | LOOP_EXPR)
+    }
+}

@@ -9,4 +9,8 @@ impl Iden {
             "float" | "uint" | "int" | "char" | "string" | "boolean"
         )
     }
+
+    pub fn as_str(&self) -> &str {
+        self.text()
+    }
 }

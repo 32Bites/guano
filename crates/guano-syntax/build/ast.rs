@@ -57,11 +57,11 @@ impl AstNode {
         if let Some(remaining) = field_map.remove(&false) {
             let field_map = remaining
                 .into_iter()
-                .into_grouping_map_by(|f| f.ty().to_string())
+                .into_grouping_map_by(|f| (f.ty().to_string(), f.card()))
                 .fold(0usize, |s, _, _| s + 1);
 
-            let field_map = field_map.into_iter().map(|(ty, c)| {
-                let card = if c > 1 {
+            let field_map = field_map.into_iter().map(|((ty, co), c)| {
+                let card = if c > 1 || co == Some(Cardinality::Many) {
                     Cardinality::Many
                 } else {
                     Cardinality::Optional
@@ -229,6 +229,7 @@ impl AstNode {
             .map(|v| format_ident!("{v}"))
             .collect_vec();
         let doc = format!("{}", name.to_title_case());
+        let enum_variant = format_ident!("{}", name.to_shouty_snake_case());
         let name = format_ident!("{name}");
 
         quote! {
@@ -242,6 +243,7 @@ impl AstNode {
                 type Language = crate::Lang;
                 fn can_cast(kind: crate::SyntaxKind) -> bool {
                     match kind {
+                        crate::SyntaxKind::#enum_variant => true,
                         #(crate::SyntaxKind::#kinds => true,)*
                         _ => false,
                     }
@@ -249,6 +251,7 @@ impl AstNode {
 
                 fn cast(syntax: crate::SyntaxNode) -> Option<Self> {
                     Some(match syntax.kind() {
+                        crate::SyntaxKind::#enum_variant => return Self::cast(syntax.first_child()?),
                         #(crate::SyntaxKind::#kinds => #name::#variants(#variants::cast(syntax).unwrap()),)*
                         _ => return None
                     })
@@ -323,6 +326,13 @@ impl Field {
         }
     }
 
+    pub fn card(&self) -> Option<Cardinality> {
+        match self {
+            Field::Node { ty: _, cardinality } => Some(*cardinality),
+            _ => None,
+        }
+    }
+
     pub fn ty(&self) -> TokenStream {
         match self {
             Field::Token { ty: _ } => quote! { crate::SyntaxToken },
@@ -387,7 +397,7 @@ impl Field {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Cardinality {
     Optional,
     Many,

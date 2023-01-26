@@ -42,10 +42,9 @@ UnaryExpr = (op: UnaryOp) Expr
 ContinueExpr = 'continue'
 BreakExpr = 'break'
 ReturnExpr = 'return' Expr?
-// ThisExpr = '@' 'iden'?
 GroupExpr = '(' Expr ')'
-IfExpr = 'if' Expr Block ElseBlock?
 
+IfExpr = 'if' Expr Block ElseBlock?
 ElseBlock = 'else' ( Block | IfExpr )
 
 LoopExpr = 'loop' Block
@@ -53,24 +52,24 @@ WhileExpr = 'while' Expr Block
 ForExpr = 'for' 'iden' 'in' Expr Block
 
 IsExpr = Expr 'is' Type
+CastExpr = Expr 'as' Type
 
 CallExpr = Expr '(' (params: ListExprItem*) ')'
 
 IndexExpr = Expr '[' Expr ']'
 FieldExpr = Expr '.' 'iden'
-CastExpr = Expr 'as' Type
 ListExpr = '[' (values: ListExprItem*) ']'
 ListExprItem = ','? Expr
 
 Block = 
     '{' 
-        (statements: Statement*) 
+        Statement*
         Expr? 
     '}'
 
 ExprStatement = Expr ';'?
 
-EmptyStatement = ';'?
+EmptyStatement = ';'
 
 Statement = ExprStatement | 
     EmptyStatement | 
@@ -104,7 +103,7 @@ Var = VarQualifiers? VarKind
     VarValue? ';'
 VarQualifiers = 'pub'? 'static'?
 VarType = ':' Type
-VarValue = '=' Expr?
+VarValue = '=' Expr
 VarKind = 'var' | 'let'
 
 Decl = Var | Class | Proto | Func | Import

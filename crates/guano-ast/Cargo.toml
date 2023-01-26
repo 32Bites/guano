@@ -1,0 +1,28 @@
+[package]
+edition = "2021"
+name = "guano-ast"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# serde = { version = "1.0.152", features = ["derive"] }
+pretty = "0.11.3"
+static_init = "1.0.3"
+thiserror = "1.0.38"
+take_mut = "0.2.2"
+impl-trait-for-tuples = "0.2.2"
+guano-syntax = { path = "../guano-syntax" }
+guano-common = { path = "../guano-common" }
+guano-interner = { path = "../guano-interner" }
+
+[features]
+default = []
+
+[dev-dependencies]
+rand = "0.8.5"
+benchmarking = "0.4.11"
+guano-common = { path = "../guano-common" }
+# peak_alloc = "0.1.0"
+# serde-value = "0.7.0"
+# ptree = { version = "0.4.0", features = ["serde-value"] }
