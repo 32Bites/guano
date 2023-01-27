@@ -36,14 +36,3 @@ impl<'source> Parser<'source> for consts::Punctuation {
         }
     }
 }
-
-pub trait PunctuationExt<'source> {
-    fn punctuation(&mut self) -> Res<'source, Child>;
-}
-
-impl<'source> PunctuationExt<'source> for ParseContext<'source> {
-    #[inline]
-    fn punctuation(&mut self) -> Res<'source, Child> {
-        punctuation(self)
-    }
-}

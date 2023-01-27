@@ -21,6 +21,7 @@ use crate::parsing::{
 
 use statement::statement;
 
+/// Parse a block expression.
 pub fn block<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (l_curly, statements, end_expr, r_curly) = tuple((
         Punctuation::LEFT_CURLY,

@@ -4,16 +4,14 @@ use guano_common::rowan::{TextLen, TextRange, TextSize};
 use guano_syntax::{Child, SyntaxNode};
 
 use super::{
-    combinators::{regex, Combinators},
     error::{Error, ErrorKind, Res},
 };
 
 #[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
-/// Attempts to mix the jobs of lexing as well as parsing together.
-/// I got tired of working with parser combinators or overly complicated
-/// lexer / parser implementations.
-/// TODO: Write blog post on the current design of the parser
+/// Contains the state of a parser.
+/// This is the structure that all parsers,
+/// and combinators operate on
+/// to create a syntax tree.
 pub struct ParseContext<'source> {
     source: &'source str,
     position: TextSize,
@@ -21,6 +19,9 @@ pub struct ParseContext<'source> {
 }
 
 impl<'source> ParseContext<'source> {
+    /// Create a new parser context from
+    /// the source string.
+    /// TODO: Ensure that the string is indexable by Rowan.
     #[inline]
     pub fn new(source: &'source str) -> Self {
         Self {
@@ -30,6 +31,8 @@ impl<'source> ParseContext<'source> {
         }
     }
 
+    /// Parse the remaining input
+    /// using a provided parser.
     #[inline]
     pub fn parse<P>(&mut self, parser: P) -> Result<P::Output, P::Error>
     where
@@ -38,6 +41,8 @@ impl<'source> ParseContext<'source> {
         parser.parse(self)
     }
 
+    /// Parse the remaining input using a provided parser,
+    /// and create a SyntaxNode if possible.
     #[inline]
     pub fn parse_ast<P>(&mut self, parser: P) -> Result<Option<SyntaxNode>, P::Error>
     where
@@ -48,51 +53,70 @@ impl<'source> ParseContext<'source> {
             .map(|c| c.into_node().map(|n| SyntaxNode::new_root(n)))
     }
 
+    /// The entire source string.
     #[inline]
     pub fn source(&self) -> &'source str {
         self.source
     }
 
+    /// The current position in the input.
     #[inline]
     pub fn position(&self) -> TextSize {
         self.position
     }
 
+    /// Are we done parsing?
     #[inline]
     pub fn is_eof(&self) -> bool {
         self.remaining().len() == 0
     }
 
+    /// Return the span of the current position.
     #[inline]
     pub fn span(&self) -> TextRange {
         TextRange::at(self.position(), 1.into())
     }
 
+    /// Return the span of the entire source.
     #[inline]
     pub fn source_span(&self) -> TextRange {
         TextRange::up_to(self.source.text_len())
     }
 
+    /// Return the remaining input
     #[inline]
     pub fn remaining(&self) -> &'source str {
         &self.source[(u32::from(self.position()) as usize)..]
     }
 
+    /// Return the captured error list.
     #[inline]
     pub fn errors(&self) -> &[Rc<Error<'source>>] {
         &self.errors
     }
 
+    /// Report an error
     #[inline]
     pub fn report_error(&mut self, error: impl Into<Error<'source>>) {
         self.errors.push(Rc::new(error.into()))
     }
+}
 
+impl<'source> ParseContext<'source> {
+    /// Be careful with this, can mess up the state.
+    #[inline]
+    pub fn position_mut(&mut self) -> &mut TextSize {
+        &mut self.position
+    }
+
+    /// Return a mutable reference to the
+    /// captured error list.
     #[inline]
     pub fn errors_mut(&mut self) -> &mut Vec<Rc<Error<'source>>> {
         &mut self.errors
     }
 
+    /// Consume self and return the captured errors.
     #[inline]
     pub fn into_errors(self) -> Vec<Rc<Error<'source>>> {
         self.errors
@@ -100,14 +124,7 @@ impl<'source> ParseContext<'source> {
 }
 
 impl<'source> ParseContext<'source> {
-    #[inline]
-    #[doc = "Be careful with this, can mess up the state."]
-    pub fn position_mut(&mut self) -> &mut TextSize {
-        &mut self.position
-    }
-}
-
-impl<'source> ParseContext<'source> {
+    /// Advance the position by a n bytes.
     pub fn advance_byte(&mut self, byte_amount: usize) -> Res<'source, TextSize> {
         if byte_amount as usize <= self.remaining().len() {
             let position = usize::from(self.position) + byte_amount;
@@ -126,6 +143,7 @@ impl<'source> ParseContext<'source> {
         }
     }
 
+    /// Advance the position by n characters.
     pub fn advance_char(&mut self, mut char_amount: usize) -> Res<'source, TextSize> {
         let mut byte_amount = 0;
 
@@ -141,33 +159,6 @@ impl<'source> ParseContext<'source> {
 
             Err(Error::spanned(self.span(), kind))
         }
-    }
-
-    pub fn raw_identifier(&mut self) -> Res<'source> {
-        regex(r"^[_a-zA-Z][_0-9a-zA-Z]*").parse(self)
-    }
-
-    pub fn identifier(&mut self) -> Res<'source> {
-        let (iden, span) = Self::raw_identifier.spanned().parse(self)?;
-
-        if guano_syntax::consts::Keyword::ALL
-            .into_iter()
-            .map(|k| k.as_str())
-            .all(|s| s != iden)
-        {
-            Ok(iden)
-        } else {
-            Err(Error::spanned(
-                span,
-                ErrorKind::String("Expected identifier".into()),
-            ))
-        }
-    }
-
-    pub fn eat_whitespace(&mut self) -> Res<'source, ()> {
-        regex(r"^\s*").parse(self)?;
-
-        Ok(())
     }
 }
 

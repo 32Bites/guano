@@ -13,6 +13,7 @@ pub mod keyword;
 pub mod list;
 pub mod literal;
 
+/// Parse primary expressions.
 pub fn primary<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((
         block,

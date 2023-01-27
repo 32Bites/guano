@@ -1,30 +1,29 @@
-SourceFile = (items: ModuleItem*)
+SourceFile = ModuleItem*
 
-Name = 'iden' | 'this'
-Path = (segments: PathSegment*)
-PathSegment = '::'? (segment: Name)
+Name = 'iden' | 'this' // | 'init'
+Path = PathSegment*
+PathSegment = '::'? Name
 
 ListType = '[' Type ']'
 NilableType = Type '?'
 
 Type = ListType | NilableType | Path
 
-Expr = Literal | BinaryExpr | Path |
+Expr = 
+    Literal | BinaryExpr | Path |
     ContinueExpr | BreakExpr | ReturnExpr | 
-    Block | 
-    // ThisExpr | 
-    GroupExpr | 
-    IfExpr | LoopExpr | WhileExpr | 
-    ForExpr | UnaryExpr | CallExpr | 
-    IndexExpr | FieldExpr | CastExpr | 
-    ListExpr | IsExpr
+    Block | GroupExpr | IfExpr | 
+    LoopExpr | WhileExpr | ForExpr | 
+    UnaryExpr | CallExpr | IndexExpr | 
+    FieldExpr | CastExpr | ListExpr | IsExpr
 
 Literal =
     'lit_float' | 'lit_integer' | 'lit_string' | 
     'lit_char' | 'true' | 'false' | 
     'nil' | 'nan' | 'inf'
 
-BinaryOp =  '||' | '&&' | '==' | '!=' | 
+BinaryOp =
+    '||' | '&&' | '==' | '!=' | 
     '<=' | '>=' | '<' | '>' | 
     '+' | '*' | '-' | '/' | 
     '%' | '<<' | '>>' | '^' | 
@@ -33,50 +32,52 @@ BinaryOp =  '||' | '&&' | '==' | '!=' |
     '<<=' | '-=' | '|=' | '&=' | 
     '^=' | '&&=' | '||='
 
-BinaryExpr = Expr (op: BinaryOp) Expr
+BinaryExpr = Expr BinaryOp Expr
 
 UnaryOp = '-' | '!'
 
-UnaryExpr = (op: UnaryOp) Expr
+UnaryExpr = UnaryOp Expr
 
 ContinueExpr = 'continue'
 BreakExpr = 'break'
 ReturnExpr = 'return' Expr?
 GroupExpr = '(' Expr ')'
 
-IfExpr = 'if' Expr Block ElseBlock?
+IfExpr = 
+    'if' Expr 
+    Block ElseBlock?
 ElseBlock = 'else' ( Block | IfExpr )
 
 LoopExpr = 'loop' Block
 WhileExpr = 'while' Expr Block
-ForExpr = 'for' 'iden' 'in' Expr Block
+ForExpr = 
+    'for' 'iden' 
+    'in' Expr Block
 
 IsExpr = Expr 'is' Type
 CastExpr = Expr 'as' Type
 
-CallExpr = Expr '(' (params: ListExprItem*) ')'
+CallExpr = Expr '(' ListExprItem* ')'
 
 IndexExpr = Expr '[' Expr ']'
+
 FieldExpr = Expr '.' 'iden'
-ListExpr = '[' (values: ListExprItem*) ']'
+
+ListExpr = '[' ListExprItem* ']'
 ListExprItem = ','? Expr
 
-Block = 
-    '{' 
-        Statement*
-        Expr? 
-    '}'
+Block = '{' Statement* Expr? '}'
 
+
+Statement = 
+    ExprStatement | 
+    EmptyStatement | 
+    Var | Import
 ExprStatement = Expr ';'?
-
 EmptyStatement = ';'
 
-Statement = ExprStatement | 
-    EmptyStatement | 
-    Var | 
-    Import
-
-Func = 'pub'? 'veto'? 'static'?
+Func = 
+    'pub'? 'veto'? 'static'?
     'fun' 'iden' FuncParams?
     FuncType? FuncBody
 FuncParams = '(' FuncParam* ')'
@@ -84,45 +85,55 @@ FuncParam = ','? 'iden' ':' Type
 FuncType = '->' Type
 FuncBody = Block | ';'
 
-Class = 'pub'? 'class' 'iden' Path? (ClassBody | ';')
+Class = 
+    'pub'? 'class' 'iden' 
+    ClassExtends? ClassBody
+ClassExtends = ':' Path?
+ClassBody = ClassBlock | ';'
+ClassBlock = '{' ClassField* '}'
+ClassField = 
+    'pub'? 'iden' 
+    ':' Type ';'
 
-ClassField = 'pub'? 'iden' ':' Type ';'
-ClassBody = '{' (fields: ClassField*) '}'
-
-Proto = 'pub'? 'proto' 'iden' 
+Proto =
+    'pub'? 'proto' 'iden' 
     ProtoExtends? ProtoBody
-ProtoExtends = ':' 
-    ProtoExtension
+ProtoExtends = ':' ProtoExtension*
 ProtoExtension = '+'? Path
 ProtoBody = '{' Func* '}'
 
-Var = 'pub'? 'static'? VarKind 
-    'iden' VarType?
-    VarValue? ';'
+Var =
+    'pub'? 'static'? VarKind 
+    'iden' VarType? VarValue? ';'
 VarType = ':' Type
 VarValue = '=' Expr
 VarKind = 'var' | 'let'
 
-Decl = Var | Class | Proto | Func | Import
+Decl =
+    Module | Var |
+    Class | Proto | 
+    Func | Import
 
-Module = 'pub'? 'module' 
+Module = 
+    'pub'? 'module' 
     'iden' ModuleBody
 ModuleBody = '{' ModuleItem* '}'
 ModuleItem = Decl | Impl
 
-Impl = ImplProto | ImplType
+Impl = 'impl' ImplProto? Type ImplBody
+ImplProto = Path 'on'
 ImplBody = '{' Func* '}'
-ImplProto = 'impl' Path
-    'on' Type ImplBody
 
-ImplType = 'impl' Type ImplBody
-
-ImportPath = Path? '::'? '*'?
+Import = 
+    'import' Path
+    ImportAlias? ';'
 ImportAlias = 'as' 'iden'
-ImportItem = ImportPath ImportAlias? ','?
-ImportItems = '{' ImportItem* '}'
-ImportBody = ImportItem | ImportItems
-ImportFrom = 'import' 
-    ImportBody 'from' Path ';'
-ImportBasic = 'import' ImportBody ';'
-Import = ImportFrom | ImportBasic
+
+//    ImportPath = Path? '::'? '*'?
+//    ImportAlias = 'as' 'iden'
+//    ImportItem = ImportPath ImportAlias? ','?
+//    ImportItems = '{' ImportItem* '}'
+//    ImportBody = ImportItem | ImportItems
+//    ImportFrom = 'import' ImportBody 'from' Path ';'
+//    ImportBasic = 'import' ImportBody ';'
+//    Import = ImportFrom | ImportBasic

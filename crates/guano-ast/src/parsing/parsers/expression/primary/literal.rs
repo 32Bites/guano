@@ -11,6 +11,7 @@ pub mod keyword;
 pub mod number;
 pub mod string;
 
+/// Parse a literal expression.
 pub fn literal<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     alternation((
         keyword::keyword,

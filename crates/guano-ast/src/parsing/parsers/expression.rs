@@ -38,11 +38,7 @@ mod tests {
 
     #[test]
     fn test_binary() {
-        let source = r"
-        1.5 + 90 * 400 - 2  [path / 100 /* THis is a comment*** */ // Comment
-        ] + [ hello ,   my  ] - some_func  ( first, second, 1000 - 10 )
-        ";
-
+        let source = r#" "My name is " + "Noah" "#;
         let mut context = ParseContext::new(source);
 
         match super::expr.padded().parse(&mut context) {

@@ -36,14 +36,14 @@ pub fn nilable_type<'source>(context: &mut ParseContext<'source>) -> Res<'source
 }
 
 pub fn primary_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
-    alternation((list_type, path_type)).parse(context)
+    alternation((list_type, path)).parse(context)
 }
 
 pub fn list_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     let (l_brack, (l_ws, ty, r_ws), r_brack) = tuple((
         Punctuation::LEFT_BRACK,
-        ty.padded(),
-        Punctuation::RIGHT_BRACK,
+        ty.expected().padded(),
+        Punctuation::RIGHT_BRACK.expected(),
     ))
     .parse(context)?;
     let mut children = vec![l_brack];
@@ -54,11 +54,5 @@ pub fn list_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, C
 
     let list = node(SyntaxKind::LIST_TYPE, children);
 
-    Ok(list) // Ok(node(SyntaxKind::TYPE, vec![list]))
-}
-
-pub fn path_type<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
-    let path = path(context)?;
-
-    Ok(path) // Ok(node(SyntaxKind::TYPE, vec![path]))
+    Ok(list)
 }

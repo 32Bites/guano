@@ -36,6 +36,7 @@ pub extern crate internment;
 pub extern crate once_cell;
 pub extern crate regex;
 pub extern crate rowan;
+pub extern crate serde;
 
 pub mod sync {
     pub type Map<K, V> = super::dashmap::DashMap<K, V, ahash::RandomState>;

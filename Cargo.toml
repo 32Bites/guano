@@ -11,3 +11,12 @@ members = ["crates/*"]
 # members = ["crates/guano-files", "crates/guano-span"]
 
 [dependencies]
+guano-common = { path = "./crates/guano-common" }
+guano-ast = { path = "./crates/guano-ast"}
+line-col = "0.2.1"
+serde_json = "1.0"
+bincode = "1.3.3"
+
+[profile.release]
+strip = true
+lto = true

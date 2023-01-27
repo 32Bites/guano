@@ -40,12 +40,6 @@ pub enum Keyword {
     False,
     Nan,
     Inf,
-    // Float,
-    // Uint,
-    // Int,
-    // Char,
-    // String,
-    // Boolean,
 }
 
 impl Keyword {

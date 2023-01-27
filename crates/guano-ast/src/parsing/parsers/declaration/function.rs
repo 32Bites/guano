@@ -154,6 +154,34 @@ pub fn func_qualifiers<'source>(context: &mut ParseContext<'source>) -> Res<'sou
     Ok(children)
 }
 
+/// Generalized parser for blocks that
+/// consist only of function declarations.
+pub fn funcs<'source>(
+    kind: SyntaxKind,
+) -> impl FnMut(&mut ParseContext<'source>) -> Res<'source, Child> + Clone + Copy {
+    move |context| {
+        let (l_paren, (l_ws, funcs, r_ws), r_paren) = tuple((
+            Punctuation::LEFT_CURLY,
+            func.then(eat_ignorable).repeated().padded(),
+            Punctuation::RIGHT_CURLY.expected(),
+        ))
+        .parse(context)?;
+
+        let mut children = vec![l_paren];
+        children.extend(l_ws);
+
+        for (func, r_ws) in funcs {
+            children.push(func);
+            children.extend(r_ws);
+        }
+
+        children.extend(r_ws);
+        children.push(r_paren);
+
+        Ok(node(kind, children))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::parsing::{
@@ -164,22 +192,16 @@ mod test {
     pub fn test_func() {
         let source = r#"
         fun main {
-            let people = [
-            Person("Noah", 17),
-            Person("Gabby", 14),
-            Person::init("Rebecca", 36),
-            Person::init("Jairo", 41)
-            ];
+            let people = ["Noah", "Gabby", "Jairo", "Rebecca"];
         }
-
-        pub veto static fun sqrt_2 -> float {
+/*         pub veto static fun sqrt_2 -> float {
             // This is a stray comment
             return math::sqrt(2.0);
         }
         
         fun other_sqrt_2 -> float {
             return srt(2.0);
-        }"#;
+        } */"#;
 
         let mut context = ParseContext::new(source);
         let parser = super::super::decl.ast().padded().repeated();

@@ -12,6 +12,7 @@ use super::{
     primary::primary,
 };
 
+/// Pratt parser for expressions.
 #[inline]
 pub fn pratt<'source>(context: &mut ParseContext<'source>) -> Res<'source, Child> {
     pratt_expr(Power::min()).parse(context)
