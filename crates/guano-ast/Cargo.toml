@@ -14,7 +14,6 @@ take_mut = "0.2.2"
 impl-trait-for-tuples = "0.2.2"
 guano-syntax = { path = "../guano-syntax" }
 guano-common = { path = "../guano-common" }
-guano-interner = { path = "../guano-interner" }
 
 [features]
 default = []

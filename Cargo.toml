@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-exclude = ["crates/guano-visualizer"]
 members = ["crates/*"]
 # members = ["crates/guano-files", "crates/guano-span"]
 
