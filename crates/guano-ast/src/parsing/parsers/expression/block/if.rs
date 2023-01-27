@@ -1,7 +1,7 @@
 use guano_syntax::{consts::Keyword, node, Child, SyntaxKind};
 
 use crate::parsing::{
-    combinators::{tuple, Combinators},
+    combinators::{tuple, Combinators, alternation},
     error::Res,
     parsers::{
         expression::expr,
@@ -34,7 +34,7 @@ pub fn else_block<'source>(context: &mut ParseContext<'source>) -> Res<'source, 
     let (kw, ws, block) = tuple((
         Keyword::ELSE,
         eat_ignorable,
-        block.or(if_expr).expect("Expected block or if expression"),
+        alternation((block, if_expr)).expect("Expected block or if expression"),
     ))
     .parse(context)?;
 

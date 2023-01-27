@@ -15,8 +15,7 @@ use crate::parsing::{
 pub fn binary_op<'source>(
     context: &mut ParseContext<'source>,
 ) -> Res<'source, (Child, BinaryKind)> {
-    let (mark, span) = punctuation
-        .prefixed(eat_ignorable)
+    let ((_, mark), span) = eat_ignorable.then(punctuation)
         .spanned()
         .peek()
         .parse(context)?;

@@ -165,15 +165,15 @@ impl Postfix for PostfixKind {
 }
 
 pub fn postfix_operator<'source>(context: &mut ParseContext<'source>) -> Res<'source, PostfixKind> {
-    let node = alternation((
-        Punctuation::DOT,
-        Punctuation::LEFT_BRACK,
-        Punctuation::LEFT_PAREN,
-        Keyword::AS,
-        Keyword::IS,
-    ))
-    .prefixed(eat_ignorable)
-    .parse(context)?;
+    let (_, node) = eat_ignorable
+        .then(alternation((
+            Punctuation::DOT,
+            Punctuation::LEFT_BRACK,
+            Punctuation::LEFT_PAREN,
+            Keyword::AS,
+            Keyword::IS,
+        )))
+        .parse(context)?;
 
     let kind = SyntaxKind::from_u16(node.kind().0).unwrap();
 
